@@ -1,0 +1,164 @@
+<html>
+    <head>
+        <meta charset="utf-8">
+        
+            <script src="lib/bindings/utils.js"></script>
+            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/dist/vis-network.min.css" integrity="sha512-WgxfT5LWjfszlPHXRmBWHkV2eceiWTOBvrKCNbdgDYTHrT2AeLCGbF4sZlZw3UMN3WtL0tGUoIAKsu8mllg/XA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/vis-network/9.1.2/dist/vis-network.min.js" integrity="sha512-LnvoEWDFrqGHlHmDD2101OrLcbsfkrzoSpvtSQtxK3RMnRV0eOkhhBN2dXHKRrUU8p2DGRTk35n4O8nWSVe1mQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+            
+        
+<center>
+<h1></h1>
+</center>
+
+<!-- <link rel="stylesheet" href="../node_modules/vis/dist/vis.min.css" type="text/css" />
+<script type="text/javascript" src="../node_modules/vis/dist/vis.js"> </script>-->
+        <link
+          href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/css/bootstrap.min.css"
+          rel="stylesheet"
+          integrity="sha384-eOJMYsd53ii+scO/bJGFsiCZc+5NDVN2yr8+0RDqr0Ql0h+rP48ckxlpbzKgwra6"
+          crossorigin="anonymous"
+        />
+        <script
+          src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.0-beta3/dist/js/bootstrap.bundle.min.js"
+          integrity="sha384-JEW9xMcG8R+pH31jmWH6WWP0WintQrMb4s7ZOdauHnUtxwoG2vI5DkLtS3qm9Ekf"
+          crossorigin="anonymous"
+        ></script>
+
+
+        <center>
+          <h1></h1>
+        </center>
+        <style type="text/css">
+
+             #mynetwork {
+                 width: 100%;
+                 height: 600px;
+                 background-color: #222222;
+                 border: 1px solid lightgray;
+                 position: relative;
+                 float: left;
+             }
+
+             
+
+             
+
+             
+        </style>
+    </head>
+
+
+    <body>
+        <div class="card" style="width: 100%">
+            
+            
+            <div id="mynetwork" class="card-body"></div>
+        </div>
+
+        
+        
+
+        <script type="text/javascript">
+
+              // initialize global variables.
+              var edges;
+              var nodes;
+              var allNodes;
+              var allEdges;
+              var nodeColors;
+              var originalNodes;
+              var network;
+              var container;
+              var options, data;
+              var filter = {
+                  item : '',
+                  property : '',
+                  value : []
+              };
+
+              
+
+              
+
+              // This method is responsible for drawing the graph, returns the drawn network
+              function drawGraph() {
+                  var container = document.getElementById('mynetwork');
+
+                  
+
+                  // parsing and collecting nodes and edges from the python
+                  nodes = new vis.DataSet([{"color": "#97c2fc", "font": {"color": "white"}, "id": "Malaysian", "label": "Malaysian", "shape": "dot", "size": 10, "title": "Malaysian"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Southeast Asian", "label": "Southeast Asian", "shape": "dot", "size": 10, "title": "Southeast Asian"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Chinese", "label": "Chinese", "shape": "dot", "size": 10, "title": "Chinese"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "coast guard", "label": "coast guard", "shape": "dot", "size": 10, "title": "coast guard"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Philippine", "label": "Philippine", "shape": "dot", "size": 10, "title": "Philippine"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Philippines", "label": "Philippines", "shape": "dot", "size": 10, "title": "Philippines"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "China", "label": "China", "shape": "dot", "size": 10, "title": "China"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "South Reef", "label": "South Reef", "shape": "dot", "size": 10, "title": "South Reef"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Vietnam", "label": "Vietnam", "shape": "dot", "size": 10, "title": "Vietnam"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "US", "label": "US", "shape": "dot", "size": 10, "title": "US"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Pete Hegseth", "label": "Pete Hegseth", "shape": "dot", "size": 10, "title": "Pete Hegseth"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Japan", "label": "Japan", "shape": "dot", "size": 10, "title": "Japan"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Beijing", "label": "Beijing", "shape": "dot", "size": 10, "title": "Beijing"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "navy", "label": "navy", "shape": "dot", "size": 10, "title": "navy"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "New Zealand", "label": "New Zealand", "shape": "dot", "size": 10, "title": "New Zealand"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "New Zealand\u0027s", "label": "New Zealand\u0027s", "shape": "dot", "size": 10, "title": "New Zealand\u0027s"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Donald Trump", "label": "Donald Trump", "shape": "dot", "size": 10, "title": "Donald Trump"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Trump", "label": "Trump", "shape": "dot", "size": 10, "title": "Trump"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "South Korea\u2019s", "label": "South Korea\u2019s", "shape": "dot", "size": 10, "title": "South Korea\u2019s"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Hyundai", "label": "Hyundai", "shape": "dot", "size": 10, "title": "Hyundai"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Tokyo", "label": "Tokyo", "shape": "dot", "size": 10, "title": "Tokyo"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Japanese", "label": "Japanese", "shape": "dot", "size": 10, "title": "Japanese"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "China State Ship\u00adbuilding Corp (CSSC", "label": "China State Ship\u00adbuilding Corp (CSSC", "shape": "dot", "size": 10, "title": "China State Ship\u00adbuilding Corp (CSSC"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "CSSC", "label": "CSSC", "shape": "dot", "size": 10, "title": "CSSC"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Taiwan", "label": "Taiwan", "shape": "dot", "size": 10, "title": "Taiwan"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "People\u0027s Liberation Army", "label": "People\u0027s Liberation Army", "shape": "dot", "size": 10, "title": "People\u0027s Liberation Army"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Oil Pumping Power Breaks All Records", "label": "Oil Pumping Power Breaks All Records", "shape": "dot", "size": 10, "title": "Oil Pumping Power Breaks All Records"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Lunar Tower", "label": "Lunar Tower", "shape": "dot", "size": 10, "title": "Lunar Tower"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Hainan Island", "label": "Hainan Island", "shape": "dot", "size": 10, "title": "Hainan Island"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Architectural Design \u0026 Research Institute of South China University of Technology", "label": "Architectural Design \u0026 Research Institute of South China University of Technology", "shape": "dot", "size": 10, "title": "Architectural Design \u0026 Research Institute of South China University of Technology"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "the Dongzhai Harbor Mangrove Natural Reserve", "label": "the Dongzhai Harbor Mangrove Natural Reserve", "shape": "dot", "size": 10, "title": "the Dongzhai Harbor Mangrove Natural Reserve"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "US Navy", "label": "US Navy", "shape": "dot", "size": 10, "title": "US Navy"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "South Korean", "label": "South Korean", "shape": "dot", "size": 10, "title": "South Korean"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "American", "label": "American", "shape": "dot", "size": 10, "title": "American"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "HJ Shipbuilding and Construction", "label": "HJ Shipbuilding and Construction", "shape": "dot", "size": 10, "title": "HJ Shipbuilding and Construction"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Diplomatic Crisis", "label": "Diplomatic Crisis", "shape": "dot", "size": 10, "title": "Diplomatic Crisis"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "British", "label": "British", "shape": "dot", "size": 10, "title": "British"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Liang Wenfeng", "label": "Liang Wenfeng", "shape": "dot", "size": 10, "title": "Liang Wenfeng"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "DeepSeek", "label": "DeepSeek", "shape": "dot", "size": 10, "title": "DeepSeek"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "USS Harry S. Truman", "label": "USS Harry S. Truman", "shape": "dot", "size": 10, "title": "USS Harry S. Truman"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "F/A-18 Super Hornets", "label": "F/A-18 Super Hornets", "shape": "dot", "size": 10, "title": "F/A-18 Super Hornets"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Navy", "label": "Navy", "shape": "dot", "size": 10, "title": "Navy"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "Sampriti Bhattacharyya", "label": "Sampriti Bhattacharyya", "shape": "dot", "size": 10, "title": "Sampriti Bhattacharyya"}, {"color": "#97c2fc", "font": {"color": "white"}, "id": "The World Has Laws About Land and Sea", "label": "The World Has Laws About Land and Sea", "shape": "dot", "size": 10, "title": "The World Has Laws About Land and Sea"}]);
+                  edges = new vis.DataSet([{"from": "Malaysian", "to": "Southeast Asian", "width": 1}, {"from": "Chinese", "to": "coast guard", "width": 1}, {"from": "Chinese", "to": "Philippine", "width": 1}, {"from": "Chinese", "to": "Philippines", "width": 1}, {"from": "Chinese", "to": "China", "width": 3}, {"from": "Chinese", "to": "South Reef", "width": 1}, {"from": "Chinese", "to": "Vietnam", "width": 1}, {"from": "Chinese", "to": "US", "width": 2}, {"from": "Chinese", "to": "Pete Hegseth", "width": 1}, {"from": "Chinese", "to": "Japan", "width": 2}, {"from": "Chinese", "to": "Beijing", "width": 1}, {"from": "Chinese", "to": "navy", "width": 1}, {"from": "Chinese", "to": "New Zealand", "width": 1}, {"from": "Chinese", "to": "New Zealand\u0027s", "width": 1}, {"from": "Chinese", "to": "Donald Trump", "width": 1}, {"from": "Chinese", "to": "Trump", "width": 1}, {"from": "coast guard", "to": "Philippine", "width": 1}, {"from": "coast guard", "to": "Philippines", "width": 1}, {"from": "Philippine", "to": "Philippines", "width": 2}, {"from": "Philippine", "to": "South Korea\u2019s", "width": 1}, {"from": "Philippine", "to": "Hyundai", "width": 1}, {"from": "Philippines", "to": "South Korea\u2019s", "width": 1}, {"from": "Philippines", "to": "Hyundai", "width": 1}, {"from": "Philippines", "to": "China", "width": 1}, {"from": "Philippines", "to": "Japan", "width": 1}, {"from": "Philippines", "to": "Tokyo", "width": 1}, {"from": "Philippines", "to": "Japanese", "width": 1}, {"from": "China", "to": "South Reef", "width": 1}, {"from": "China", "to": "Vietnam", "width": 1}, {"from": "China", "to": "China State Ship\u00adbuilding Corp (CSSC", "width": 1}, {"from": "China", "to": "CSSC", "width": 1}, {"from": "China", "to": "US", "width": 2}, {"from": "China", "to": "Pete Hegseth", "width": 1}, {"from": "China", "to": "Japan", "width": 3}, {"from": "China", "to": "Beijing", "width": 1}, {"from": "China", "to": "Tokyo", "width": 1}, {"from": "China", "to": "Japanese", "width": 1}, {"from": "China", "to": "Donald Trump", "width": 1}, {"from": "China", "to": "Trump", "width": 1}, {"from": "China", "to": "Taiwan", "width": 1}, {"from": "China", "to": "People\u0027s Liberation Army", "width": 1}, {"from": "China", "to": "Oil Pumping Power Breaks All Records", "width": 1}, {"from": "China", "to": "Lunar Tower", "width": 1}, {"from": "China", "to": "Hainan Island", "width": 1}, {"from": "China", "to": "Architectural Design \u0026 Research Institute of South China University of Technology", "width": 1}, {"from": "China", "to": "the Dongzhai Harbor Mangrove Natural Reserve", "width": 1}, {"from": "South Reef", "to": "Vietnam", "width": 1}, {"from": "China State Ship\u00adbuilding Corp (CSSC", "to": "CSSC", "width": 1}, {"from": "US Navy", "to": "South Korean", "width": 1}, {"from": "US Navy", "to": "American", "width": 1}, {"from": "US Navy", "to": "HJ Shipbuilding and Construction", "width": 1}, {"from": "South Korean", "to": "American", "width": 1}, {"from": "South Korean", "to": "HJ Shipbuilding and Construction", "width": 1}, {"from": "American", "to": "HJ Shipbuilding and Construction", "width": 1}, {"from": "South Korea\u2019s", "to": "Hyundai", "width": 1}, {"from": "US", "to": "Pete Hegseth", "width": 1}, {"from": "US", "to": "Japan", "width": 2}, {"from": "US", "to": "Beijing", "width": 1}, {"from": "US", "to": "Donald Trump", "width": 1}, {"from": "US", "to": "Trump", "width": 1}, {"from": "Pete Hegseth", "to": "Japan", "width": 1}, {"from": "Pete Hegseth", "to": "Beijing", "width": 1}, {"from": "Japan", "to": "Beijing", "width": 3}, {"from": "Japan", "to": "Tokyo", "width": 3}, {"from": "Japan", "to": "Japanese", "width": 1}, {"from": "Japan", "to": "Donald Trump", "width": 1}, {"from": "Japan", "to": "Trump", "width": 1}, {"from": "Japan", "to": "Taiwan", "width": 1}, {"from": "Japan", "to": "Diplomatic Crisis", "width": 1}, {"from": "Beijing", "to": "Taiwan", "width": 1}, {"from": "Beijing", "to": "Tokyo", "width": 2}, {"from": "Beijing", "to": "Diplomatic Crisis", "width": 1}, {"from": "Tokyo", "to": "Japanese", "width": 1}, {"from": "Tokyo", "to": "Taiwan", "width": 1}, {"from": "Tokyo", "to": "Diplomatic Crisis", "width": 1}, {"from": "navy", "to": "New Zealand", "width": 1}, {"from": "navy", "to": "New Zealand\u0027s", "width": 1}, {"from": "New Zealand", "to": "New Zealand\u0027s", "width": 1}, {"from": "Donald Trump", "to": "Trump", "width": 1}, {"from": "Taiwan", "to": "People\u0027s Liberation Army", "width": 1}, {"from": "British", "to": "Liang Wenfeng", "width": 1}, {"from": "British", "to": "DeepSeek", "width": 1}, {"from": "Liang Wenfeng", "to": "DeepSeek", "width": 1}, {"from": "Lunar Tower", "to": "Hainan Island", "width": 1}, {"from": "Lunar Tower", "to": "Architectural Design \u0026 Research Institute of South China University of Technology", "width": 1}, {"from": "Lunar Tower", "to": "the Dongzhai Harbor Mangrove Natural Reserve", "width": 1}, {"from": "Hainan Island", "to": "Architectural Design \u0026 Research Institute of South China University of Technology", "width": 1}, {"from": "Hainan Island", "to": "the Dongzhai Harbor Mangrove Natural Reserve", "width": 1}, {"from": "Architectural Design \u0026 Research Institute of South China University of Technology", "to": "the Dongzhai Harbor Mangrove Natural Reserve", "width": 1}, {"from": "USS Harry S. Truman", "to": "F/A-18 Super Hornets", "width": 1}, {"from": "USS Harry S. Truman", "to": "Navy", "width": 1}, {"from": "F/A-18 Super Hornets", "to": "Navy", "width": 1}]);
+
+                  nodeColors = {};
+                  allNodes = nodes.get({ returnType: "Object" });
+                  for (nodeId in allNodes) {
+                    nodeColors[nodeId] = allNodes[nodeId].color;
+                  }
+                  allEdges = edges.get({ returnType: "Object" });
+                  // adding nodes and edges to the graph
+                  data = {nodes: nodes, edges: edges};
+
+                  var options = {
+    "configure": {
+        "enabled": false
+    },
+    "edges": {
+        "color": {
+            "inherit": true
+        },
+        "smooth": {
+            "enabled": true,
+            "type": "dynamic"
+        }
+    },
+    "interaction": {
+        "dragNodes": true,
+        "hideEdgesOnDrag": false,
+        "hideNodesOnDrag": false
+    },
+    "physics": {
+        "enabled": true,
+        "forceAtlas2Based": {
+            "avoidOverlap": 0,
+            "centralGravity": 0.01,
+            "damping": 0.4,
+            "gravitationalConstant": -50,
+            "springConstant": 0.08,
+            "springLength": 100
+        },
+        "solver": "forceAtlas2Based",
+        "stabilization": {
+            "enabled": true,
+            "fit": true,
+            "iterations": 1000,
+            "onlyDynamicEdges": false,
+            "updateInterval": 50
+        }
+    }
+};
+
+                  
+
+
+                  
+
+                  network = new vis.Network(container, data, options);
+
+                  
+
+                  
+
+                  
+
+
+                  
+
+                  return network;
+
+              }
+              drawGraph();
+        </script>
+    </body>
+</html>

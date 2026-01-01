@@ -1,0 +1,433 @@
+[
+    {
+        "title": "Why are South China Sea disputes hard to resolve? Power 'asymmetry', Malaysian expert says",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-12T09:30:00Z",
+        "sentiment": 0.5719,
+        "entities": [
+            [
+                "Malaysian",
+                "NORP"
+            ],
+            [
+                "Southeast Asian",
+                "NORP"
+            ]
+        ]
+    },
+    {
+        "title": "Philippines says 3 fishermen injured by Chinese coast guard's water cannons off disputed shoal",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-13T09:03:18Z",
+        "sentiment": -0.743,
+        "entities": [
+            [
+                "Chinese",
+                "NORP"
+            ],
+            [
+                "coast guard",
+                "ORG"
+            ],
+            [
+                "Philippine",
+                "NORP"
+            ],
+            [
+                "Philippines",
+                "GPE"
+            ]
+        ]
+    },
+    {
+        "title": "Vietnam steps up South Reef expansion, careful not to provoke China",
+        "source": "UPI.com",
+        "published_at": "2025-12-11T20:25:35Z",
+        "sentiment": 0.1675,
+        "entities": [
+            [
+                "China",
+                "GPE"
+            ],
+            [
+                "South Reef",
+                "GPE"
+            ],
+            [
+                "Vietnam",
+                "GPE"
+            ],
+            [
+                "Chinese",
+                "NORP"
+            ]
+        ]
+    },
+    {
+        "title": "China's giant shipbuilder CSSC unveils plans for cruise, deep-sea, nuclear-powered vessels",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-01T09:30:00Z",
+        "sentiment": 0.0,
+        "entities": [
+            [
+                "China State Ship\u00adbuilding Corp (CSSC",
+                "ORG"
+            ],
+            [
+                "China",
+                "GPE"
+            ],
+            [
+                "CSSC",
+                "ORG"
+            ]
+        ]
+    },
+    {
+        "title": "Another South Korean shipbuilder just won a US Navy maintenance job as the country's yards scoop up more American work",
+        "source": "Business Insider",
+        "published_at": "2025-12-15T20:48:49Z",
+        "sentiment": 0.6486,
+        "entities": [
+            [
+                "US Navy",
+                "ORG"
+            ],
+            [
+                "South Korean",
+                "NORP"
+            ],
+            [
+                "American",
+                "NORP"
+            ],
+            [
+                "HJ Shipbuilding and Construction",
+                "ORG"
+            ]
+        ]
+    },
+    {
+        "title": "South Korea\u2019s Hyundai feeds rapid naval upgrades in the Philippines",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-05T11:22:00Z",
+        "sentiment": -0.128,
+        "entities": [
+            [
+                "South Korea\u2019s",
+                "GPE"
+            ],
+            [
+                "Philippine",
+                "NORP"
+            ],
+            [
+                "Philippines",
+                "GPE"
+            ],
+            [
+                "Hyundai",
+                "ORG"
+            ]
+        ]
+    },
+    {
+        "title": "US, Japan defence chiefs say China harming regional peace",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-12T03:40:34Z",
+        "sentiment": 0.743,
+        "entities": [
+            [
+                "China",
+                "GPE"
+            ],
+            [
+                "US",
+                "GPE"
+            ],
+            [
+                "Chinese",
+                "NORP"
+            ],
+            [
+                "Pete Hegseth",
+                "PERSON"
+            ],
+            [
+                "Japan",
+                "GPE"
+            ],
+            [
+                "Beijing",
+                "GPE"
+            ]
+        ]
+    },
+    {
+        "title": "China bristles as Japan weighs missile export to Philippines",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-01T09:30:00Z",
+        "sentiment": 0.3612,
+        "entities": [
+            [
+                "China",
+                "GPE"
+            ],
+            [
+                "Japan",
+                "GPE"
+            ],
+            [
+                "Tokyo",
+                "GPE"
+            ],
+            [
+                "Philippines",
+                "GPE"
+            ],
+            [
+                "Japanese",
+                "NORP"
+            ]
+        ]
+    },
+    {
+        "title": "7 Chinese warships followed our navy vessel on its East Asia mission, New Zealand says",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-09T09:30:00Z",
+        "sentiment": -0.25,
+        "entities": [
+            [
+                "Chinese",
+                "NORP"
+            ],
+            [
+                "navy",
+                "ORG"
+            ],
+            [
+                "New Zealand",
+                "GPE"
+            ],
+            [
+                "New Zealand's",
+                "GPE"
+            ]
+        ]
+    },
+    {
+        "title": "A New Creature With 24 Eyes Can See In Every Direction At Once",
+        "source": "Popular Mechanics",
+        "published_at": "2025-12-15T13:00:00Z",
+        "sentiment": -0.2023,
+        "entities": []
+    },
+    {
+        "title": "China-Japan row has left US' Donald Trump facing 'dilemma': analyst",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-11T09:30:00Z",
+        "sentiment": -0.6249,
+        "entities": [
+            [
+                "China",
+                "GPE"
+            ],
+            [
+                "US",
+                "GPE"
+            ],
+            [
+                "Chinese",
+                "NORP"
+            ],
+            [
+                "Japan",
+                "GPE"
+            ],
+            [
+                "Donald Trump",
+                "PERSON"
+            ],
+            [
+                "Trump",
+                "PERSON"
+            ]
+        ]
+    },
+    {
+        "title": "China flexes blockade capabilities near Taiwan on second day of military drills",
+        "source": "NPR",
+        "published_at": "2025-12-30T11:52:38Z",
+        "sentiment": 0.5267,
+        "entities": [
+            [
+                "Taiwan",
+                "GPE"
+            ],
+            [
+                "People's Liberation Army",
+                "ORG"
+            ],
+            [
+                "China",
+                "GPE"
+            ]
+        ]
+    },
+    {
+        "title": "Why the feud between Tokyo and Beijing could rage on for a while yet",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-29T09:30:00Z",
+        "sentiment": -0.8271,
+        "entities": [
+            [
+                "Taiwan",
+                "GPE"
+            ],
+            [
+                "Tokyo",
+                "GPE"
+            ],
+            [
+                "Japan",
+                "GPE"
+            ],
+            [
+                "Beijing",
+                "GPE"
+            ]
+        ]
+    },
+    {
+        "title": "China\u2019s Oil Pumping Power Breaks All Records",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-11T01:00:00Z",
+        "sentiment": -0.296,
+        "entities": [
+            [
+                "China",
+                "GPE"
+            ],
+            [
+                "Oil Pumping Power Breaks All Records",
+                "ORG"
+            ]
+        ]
+    },
+    {
+        "title": "DeepSeek's Liang Wenfeng makes the cut in top 10 'people who shaped science in 2025'",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-09T09:30:00Z",
+        "sentiment": 0.34,
+        "entities": [
+            [
+                "British",
+                "NORP"
+            ],
+            [
+                "Liang Wenfeng",
+                "PERSON"
+            ],
+            [
+                "DeepSeek",
+                "ORG"
+            ]
+        ]
+    },
+    {
+        "title": "Observation tower in China topped with moon-shaped viewing platform",
+        "source": "Dezeen",
+        "published_at": "2025-12-03T06:00:23Z",
+        "sentiment": 0.3612,
+        "entities": [
+            [
+                "China",
+                "GPE"
+            ],
+            [
+                "Lunar Tower",
+                "PERSON"
+            ],
+            [
+                "Hainan Island",
+                "GPE"
+            ],
+            [
+                "Architectural Design & Research Institute of South China University of Technology",
+                "ORG"
+            ],
+            [
+                "the Dongzhai Harbor Mangrove Natural Reserve",
+                "ORG"
+            ]
+        ]
+    },
+    {
+        "title": "Japan\u2019s Diplomatic Crisis With China Will Get Worse Before It Gets Better",
+        "source": "World Politics Review",
+        "published_at": "2025-12-29T15:11:43Z",
+        "sentiment": -0.765,
+        "entities": [
+            [
+                "Tokyo",
+                "GPE"
+            ],
+            [
+                "Diplomatic Crisis",
+                "ORG"
+            ],
+            [
+                "Japan",
+                "GPE"
+            ],
+            [
+                "Beijing",
+                "GPE"
+            ]
+        ]
+    },
+    {
+        "title": "Navy releases \u2018catastrophic\u2019 findings involving USS Harry S. Truman",
+        "source": "Yahoo Entertainment",
+        "published_at": "2025-12-04T21:52:35Z",
+        "sentiment": 0.3818,
+        "entities": [
+            [
+                "USS Harry S. Truman",
+                "PERSON"
+            ],
+            [
+                "F/A-18 Super Hornets",
+                "ORG"
+            ],
+            [
+                "Navy",
+                "ORG"
+            ]
+        ]
+    },
+    {
+        "title": "This MIT Ph.D. is betting the future of transportation is on water, not in the air",
+        "source": "Business Insider",
+        "published_at": "2025-11-30T10:00:16Z",
+        "sentiment": 0.0,
+        "entities": [
+            [
+                "Sampriti Bhattacharyya",
+                "PERSON"
+            ]
+        ]
+    },
+    {
+        "title": "The World Has Laws About Land and Sea, But Not About Ice",
+        "source": "The Atlantic",
+        "published_at": "2025-12-26T13:00:00Z",
+        "sentiment": 0.0,
+        "entities": [
+            [
+                "The World Has Laws About Land and Sea",
+                "ORG"
+            ]
+        ]
+    }
+]
