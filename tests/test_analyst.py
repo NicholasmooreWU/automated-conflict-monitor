@@ -20,7 +20,12 @@ class TestIntelAnalyst:
             mock_vader.return_value = mock_sentiment
             
             analyst_instance = IntelAnalyst()
-            return analyst_instance
+            
+            # Ensure mocks are accessible after initialization
+            analyst_instance.nlp = mock_nlp
+            analyst_instance.sentiment_analyzer = mock_sentiment
+            
+            yield analyst_instance
     
     @pytest.fixture
     def sample_article(self):
@@ -46,7 +51,7 @@ class TestIntelAnalyst:
         # Mock spaCy NER
         mock_doc = Mock()
         mock_doc.ents = []
-        analyst.nlp.return_value = mock_doc
+        analyst.nlp = Mock(return_value=mock_doc)
         
         result = analyst.analyze_article(sample_article)
         
@@ -70,7 +75,7 @@ class TestIntelAnalyst:
         
         mock_doc = Mock()
         mock_doc.ents = [mock_entity1, mock_entity2]
-        analyst.nlp.return_value = mock_doc
+        analyst.nlp = Mock(return_value=mock_doc)
         
         result = analyst.analyze_article(sample_article)
         
@@ -96,7 +101,7 @@ class TestIntelAnalyst:
         
         mock_doc = Mock()
         mock_doc.ents = [valid_entity, invalid_entity]
-        analyst.nlp.return_value = mock_doc
+        analyst.nlp = Mock(return_value=mock_doc)
         
         result = analyst.analyze_article(sample_article)
         
@@ -121,7 +126,7 @@ class TestIntelAnalyst:
         
         mock_doc = Mock()
         mock_doc.ents = [entity1, entity2]
-        analyst.nlp.return_value = mock_doc
+        analyst.nlp = Mock(return_value=mock_doc)
         
         result = analyst.analyze_article(sample_article)
         
@@ -142,7 +147,7 @@ class TestIntelAnalyst:
         )
         mock_doc = Mock()
         mock_doc.ents = []
-        analyst.nlp.return_value = mock_doc
+        analyst.nlp = Mock(return_value=mock_doc)
         
         result = analyst.process_batch(articles)
         
