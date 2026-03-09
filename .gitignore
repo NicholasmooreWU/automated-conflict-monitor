@@ -17,6 +17,9 @@ ENV/
 *.json
 intel_data/
 
+# Generated graph files (user-specific)
+network*.html
+
 # Environment files (secrets)
 .env
 .env.local
