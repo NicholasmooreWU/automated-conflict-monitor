@@ -36,5 +36,7 @@ intel_data/
 .DS_Store
 Thumbs.db
 
-# Streamlit
-.streamlit/
+# Streamlit (keep config, ignore cache and secrets)
+.streamlit/secrets.toml
+.streamlit/*_cache/
+!.streamlit/config.toml
