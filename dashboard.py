@@ -254,214 +254,218 @@ def main():
             "Select Region to Monitor",
             options=list(REGIONS.keys()),
             index=0
-    )
-    
-    # Custom search query (advanced users)
-    use_custom = st.sidebar.checkbox("⚙️ Use Custom Query", value=False)
-    if use_custom:
-        custom_query = st.sidebar.text_input("Custom Search Terms", value=REGIONS[selected_region])
-        max_articles = st.sidebar.slider("Max Articles to Analyze", 10, 50, 20)
-    else:
-        custom_query = REGIONS[selected_region]
-        max_articles = 20
-    
-    # Collect Intelligence Button
-    if st.sidebar.button("🚀 Collect Fresh Intelligence", type="primary"):
-        success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles)
-        if success:
-            st.sidebar.success(message)
-            st.rerun()
-        else:
-            st.sidebar.error(message)
-    
-    st.sidebar.divider()
-    
-    # === SIDEBAR: DATA FILTERING ===
-    st.sidebar.header("📊 Data Filters")
-    
-    # Get available regions from database
-    available_regions = get_available_regions()
-    
-    if available_regions:
-        region_filter = st.sidebar.selectbox(
-            "View Data From:",
-            options=["All Regions"] + available_regions,
-            index=0
         )
-    else:
-        region_filter = None
-        st.sidebar.warning("No data in database. Collect intelligence first!")
-    
-    # Entity type filter
-    entity_type = st.sidebar.selectbox(
-        "Filter Entity Type:",
-        options=["All Types", "GPE", "ORG", "PERSON", "NORP"],
-        help="GPE: Countries/Cities, ORG: Organizations, PERSON: People, NORP: Nationalities"
-    )
-    
-    st.sidebar.divider()
-    
-    # === LOAD DATA ===
-    df_articles, df_entities = load_data(region_filter if region_filter != "All Regions" else None)
-    
-    if df_articles.empty:
-        st.warning("📭 No intelligence data available. Use the sidebar to collect fresh intelligence!")
-        st.info("💡 **Getting Started:** Select a region above and click '🚀 Collect Fresh Intelligence' to begin monitoring.")
-        return
-    
-    # === SIDEBAR: STATISTICS ===
-    st.sidebar.header("📈 Intel Summary")
-    st.sidebar.metric("Total Articles", len(df_articles))
-    st.sidebar.metric("Unique Entities", df_entities['name'].nunique() if not df_entities.empty else 0)
-    st.sidebar.metric("Avg Sentiment", f"{df_articles['sentiment'].mean():.2f}" if 'sentiment' in df_articles.columns else "N/A")
-    
-    # Regional distribution
-    if 'region' in df_articles.columns:
-        st.sidebar.subheader("📍 Regional Coverage")
-        region_counts = df_articles['region'].value_counts()
-        st.sidebar.bar_chart(region_counts)
-    
-    # === MAIN AREA: TABS ===
-    tab1, tab2, tab3, tab4 = st.tabs(["🔗 Network Graph", "📊 Analytics", "📄 Articles", "ℹ️ About"])
-    
-    # TAB 1: NETWORK GRAPH
-    with tab1:
-        st.subheader("🔗 Entity Relationship Network")
         
-        col1, col2 = st.columns([3, 1])
-        with col1:
-            st.info("**Legend:** 🔴 Countries/Locations  🔵 People  🟢 Organizations  🟡 Nationalities")
-        with col2:
-            if not df_entities.empty:
-                st.metric("Connections", len(df_entities))
+        # Custom search query (advanced users)
+        use_custom = st.sidebar.checkbox("⚙️ Use Custom Query", value=False)
+        if use_custom:
+            custom_query = st.sidebar.text_input("Custom Search Terms", value=REGIONS[selected_region])
+            max_articles = st.sidebar.slider("Max Articles to Analyze", 10, 50, 20)
+        else:
+            custom_query = REGIONS[selected_region]
+            max_articles = 20
         
-        if not df_entities.empty:
-            graph_html = create_network_graph(df_entities, entity_type)
-            
-            if graph_html and os.path.exists(graph_html):
-                with open(graph_html, 'r', encoding='utf-8') as f:
-                    source_code = f.read()
-                components.html(source_code, height=680)
+        # Collect Intelligence Button
+        if st.sidebar.button("🚀 Collect Fresh Intelligence", type="primary"):
+            success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles)
+            if success:
+                st.sidebar.success(message)
+                st.rerun()
             else:
-                st.warning("No entities to display with current filters.")
+                st.sidebar.error(message)
+        
+            st.sidebar.divider()
+        
+        # === SIDEBAR: DATA FILTERING ===
+        st.sidebar.header("📊 Data Filters")
+        
+        # Get available regions from database
+        available_regions = get_available_regions()
+        
+        if available_regions:
+            region_filter = st.sidebar.selectbox(
+                "View Data From:",
+                options=["All Regions"] + available_regions,
+                index=0
+            )
         else:
-            st.warning("No entities found in the selected data.")
-    
-    # TAB 2: ANALYTICS
-    with tab2:
-        st.subheader("📊 Intelligence Analytics")
+            region_filter = None
+            st.sidebar.warning("No data in database. Collect intelligence first!")
         
-        if not df_entities.empty:
-            col1, col2 = st.columns(2)
-            
-            with col1:
-                st.markdown("#### Top 15 Mentioned Entities")
-                top_entities = df_entities['name'].value_counts().head(15)
-                st.bar_chart(top_entities)
-            
-            with col2:
-                st.markdown("#### Entity Type Distribution")
-                entity_type_dist = df_entities['type'].value_counts()
-                st.bar_chart(entity_type_dist)
-            
-            # Sentiment over time
-            if 'published_at' in df_articles.columns:
-                st.markdown("#### Sentiment Trend Over Time")
-                df_articles['published_date'] = pd.to_datetime(df_articles['published_at']).dt.date
-                sentiment_trend = df_articles.groupby('published_date')['sentiment'].mean()
-                st.line_chart(sentiment_trend)
-            
-            # Top entity pairs (co-occurrences)
-            st.markdown("#### Top Entity Connections")
-            entity_pairs = []
-            article_groups = df_entities.groupby('article_id')['name'].apply(list)
-            for entities in article_groups:
-                for i in range(len(entities)):
-                    for j in range(i + 1, len(entities)):
-                        entity_pairs.append(tuple(sorted([entities[i], entities[j]])))
-            
-            if entity_pairs:
-                pair_counts = pd.Series(entity_pairs).value_counts().head(10)
-                pair_df = pd.DataFrame({
-                    'Entity Pair': [f"{p[0]} ↔ {p[1]}" for p in pair_counts.index],
-                    'Co-occurrences': pair_counts.values
-                })
-                st.dataframe(pair_df, width='stretch')
-        else:
-            st.info("No entity data available for analysis.")
-    
-    # TAB 3: ARTICLES TABLE
-    with tab3:
-        st.subheader("📄 Intelligence Reports")
-        
-        # Search functionality
-        search_term = st.text_input("🔍 Search articles by title", "")
-        
-        display_df = df_articles.copy()
-        if search_term:
-            display_df = display_df[display_df['title'].str.contains(search_term, case=False, na=False)]
-        
-        # Sort options
-        sort_by = st.selectbox("Sort by:", ["published_at", "sentiment", "source"])
-        display_df = display_df.sort_values(by=sort_by, ascending=False)
-        
-        # Display columns
-        cols_to_show = ['title', 'source', 'sentiment', 'published_at']
-        if 'region' in display_df.columns:
-            cols_to_show.append('region')
-        
-        st.dataframe(
-            display_df[cols_to_show],
-            width='stretch',
-            height=500
+        # Entity type filter
+        entity_type = st.sidebar.selectbox(
+            "Filter Entity Type:",
+            options=["All Types", "GPE", "ORG", "PERSON", "NORP"],
+            help="GPE: Countries/Cities, ORG: Organizations, PERSON: People, NORP: Nationalities"
         )
         
-        # Export option
-        if st.button("📥 Export to CSV"):
-            csv = display_df[cols_to_show].to_csv(index=False)
-            st.download_button(
-                label="Download CSV",
-                data=csv,
-                file_name=f"intel_report_{selected_region}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
-                mime="text/csv"
+        st.sidebar.divider()
+        
+        # === LOAD DATA ===
+        df_articles, df_entities = load_data(region_filter if region_filter != "All Regions" else None)
+        
+        if df_articles.empty:
+            st.warning("📭 No intelligence data available. Use the sidebar to collect fresh intelligence!")
+            st.info("💡 **Getting Started:** Select a region above and click '🚀 Collect Fresh Intelligence' to begin monitoring.")
+            return
+        
+        # === SIDEBAR: STATISTICS ===
+        st.sidebar.header("📈 Intel Summary")
+        st.sidebar.metric("Total Articles", len(df_articles))
+        st.sidebar.metric("Unique Entities", df_entities['name'].nunique() if not df_entities.empty else 0)
+        st.sidebar.metric("Avg Sentiment", f"{df_articles['sentiment'].mean():.2f}" if 'sentiment' in df_articles.columns else "N/A")
+        
+        # Regional distribution
+        if 'region' in df_articles.columns:
+            st.sidebar.subheader("📍 Regional Coverage")
+            region_counts = df_articles['region'].value_counts()
+            st.sidebar.bar_chart(region_counts)
+        
+        # === MAIN AREA: TABS ===
+        tab1, tab2, tab3, tab4 = st.tabs(["🔗 Network Graph", "📊 Analytics", "📄 Articles", "ℹ️ About"])
+        
+        # TAB 1: NETWORK GRAPH
+        with tab1:
+            st.subheader("🔗 Entity Relationship Network")
+            
+            col1, col2 = st.columns([3, 1])
+            with col1:
+                st.info("**Legend:** 🔴 Countries/Locations  🔵 People  🟢 Organizations  🟡 Nationalities")
+            with col2:
+                if not df_entities.empty:
+                    st.metric("Connections", len(df_entities))
+            
+            if not df_entities.empty:
+                graph_html = create_network_graph(df_entities, entity_type)
+                
+                if graph_html and os.path.exists(graph_html):
+                    with open(graph_html, 'r', encoding='utf-8') as f:
+                        source_code = f.read()
+                    components.html(source_code, height=680)
+                else:
+                    st.warning("No entities to display with current filters.")
+            else:
+                st.warning("No entities found in the selected data.")
+        
+        # TAB 2: ANALYTICS
+        with tab2:
+            st.subheader("📊 Intelligence Analytics")
+            
+            if not df_entities.empty:
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    st.markdown("#### Top 15 Mentioned Entities")
+                    top_entities = df_entities['name'].value_counts().head(15)
+                    st.bar_chart(top_entities)
+                
+                with col2:
+                    st.markdown("#### Entity Type Distribution")
+                    entity_type_dist = df_entities['type'].value_counts()
+                    st.bar_chart(entity_type_dist)
+                
+                # Sentiment over time
+                if 'published_at' in df_articles.columns:
+                    st.markdown("#### Sentiment Trend Over Time")
+                    df_articles['published_date'] = pd.to_datetime(df_articles['published_at']).dt.date
+                    sentiment_trend = df_articles.groupby('published_date')['sentiment'].mean()
+                    st.line_chart(sentiment_trend)
+                
+                # Top entity pairs (co-occurrences)
+                st.markdown("#### Top Entity Connections")
+                entity_pairs = []
+                article_groups = df_entities.groupby('article_id')['name'].apply(list)
+                for entities in article_groups:
+                    for i in range(len(entities)):
+                        for j in range(i + 1, len(entities)):
+                            entity_pairs.append(tuple(sorted([entities[i], entities[j]])))
+                
+                if entity_pairs:
+                    pair_counts = pd.Series(entity_pairs).value_counts().head(10)
+                    pair_df = pd.DataFrame({
+                        'Entity Pair': [f"{p[0]} ↔ {p[1]}" for p in pair_counts.index],
+                        'Co-occurrences': pair_counts.values
+                    })
+                    st.dataframe(pair_df, width='stretch')
+            else:
+                st.info("No entity data available for analysis.")
+        
+        # TAB 3: ARTICLES TABLE
+        with tab3:
+            st.subheader("📄 Intelligence Reports")
+            
+            # Search functionality
+            search_term = st.text_input("🔍 Search articles by title", "")
+            
+            display_df = df_articles.copy()
+            if search_term:
+                display_df = display_df[display_df['title'].str.contains(search_term, case=False, na=False)]
+            
+            # Sort options
+            sort_by = st.selectbox("Sort by:", ["published_at", "sentiment", "source"])
+            display_df = display_df.sort_values(by=sort_by, ascending=False)
+            
+            # Display columns
+            cols_to_show = ['title', 'source', 'sentiment', 'published_at']
+            if 'region' in display_df.columns:
+                cols_to_show.append('region')
+            
+            st.dataframe(
+                display_df[cols_to_show],
+                width='stretch',
+                height=500
             )
-    
-    # TAB 4: ABOUT
-    with tab4:
-        st.subheader("ℹ️ About This System")
-        st.markdown("""
-        ### 🎯 Mission
-        This automated OSINT (Open Source Intelligence) system monitors global conflicts by:
-        - 📡 **Collecting** real-time news from multiple sources
-        - 🧠 **Analyzing** text with NLP (Named Entity Recognition & Sentiment Analysis)
-        - 🗄️ **Archiving** structured intelligence in a relational database
-        - 🔗 **Visualizing** entity relationships to reveal hidden patterns
+            
+            # Export option
+            if st.button("📥 Export to CSV"):
+                csv = display_df[cols_to_show].to_csv(index=False)
+                st.download_button(
+                    label="Download CSV",
+                    data=csv,
+                    file_name=f"intel_report_{selected_region}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+                    mime="text/csv"
+                )
         
-        ### 🛠️ Technology Stack
-        - **NLP**: spaCy (Entity Recognition), VADER (Sentiment)
-        - **Data**: NewsAPI, SQLite, pandas
-        - **Visualization**: NetworkX, PyVis, Streamlit
-        - **Security**: Environment variables, input sanitization
-        
-        ### 📚 Entity Types
-        - **GPE**: Geopolitical Entities (countries, cities)
-        - **ORG**: Organizations (militaries, governments, NGOs)
-        - **PERSON**: Key individuals (leaders, officials)
-        - **NORP**: Nationalities or religious/political groups
-        
-        ### 🚀 How to Use
-        1. Select a region from the sidebar
-        2. Click "Collect Fresh Intelligence" to gather latest data
-        3. Explore the network graph to see entity relationships
-        4. Use filters to focus on specific regions or entity types
-        5. Compare multiple regions by selecting "All Regions"
-        
-        ### ⚠️ Limitations
-        - Data limited to publicly available news sources
-        - Sentiment analysis may not capture nuance
-        - Entity extraction depends on mention frequency
-        - Update frequency limited by API rate limits
-        """)
+        # TAB 4: ABOUT
+        with tab4:
+            st.subheader("ℹ️ About This System")
+            st.markdown("""
+            ### 🎯 Mission
+            This automated OSINT (Open Source Intelligence) system monitors global conflicts by:
+            - 📡 **Collecting** real-time news from multiple sources
+            - 🧠 **Analyzing** text with NLP (Named Entity Recognition & Sentiment Analysis)
+            - 🗄️ **Archiving** structured intelligence in a relational database
+            - 🔗 **Visualizing** entity relationships to reveal hidden patterns
+            
+            ### 🛠️ Technology Stack
+            - **NLP**: spaCy (Entity Recognition), VADER (Sentiment)
+            - **Data**: NewsAPI, SQLite, pandas
+            - **Visualization**: NetworkX, PyVis, Streamlit
+            - **Security**: Environment variables, input sanitization
+            
+            ### 📚 Entity Types
+            - **GPE**: Geopolitical Entities (countries, cities)
+            - **ORG**: Organizations (militaries, governments, NGOs)
+            - **PERSON**: Key individuals (leaders, officials)
+            - **NORP**: Nationalities or religious/political groups
+            
+            ### 🚀 How to Use
+            1. Select a region from the sidebar
+            2. Click "Collect Fresh Intelligence" to gather latest data
+            3. Explore the network graph to see entity relationships
+            4. Use filters to focus on specific regions or entity types
+            5. Compare multiple regions by selecting "All Regions"
+            
+            ### ⚠️ Limitations
+            - Data limited to publicly available news sources
+            - Sentiment analysis may not capture nuance
+            - Entity extraction depends on mention frequency
+            - Update frequency limited by API rate limits
+            """)
+    except Exception as e:
+        print(f"ERROR IN MAIN: {type(e).__name__}: {str(e)}")
+        st.error(f"Application Error: {str(e)}")
+        traceback.print_exc()
 
 if __name__ == "__main__":
     print("=" * 80)
