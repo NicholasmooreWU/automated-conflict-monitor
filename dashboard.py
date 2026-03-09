@@ -235,6 +235,30 @@ def init_database():
     except Exception as e:
         return False
 
+def clear_database():
+    """Clear all data from the database (DANGER!)"""
+    try:
+        if not os.path.exists("intel_graph.db"):
+            return True, "No database to clear"
+        
+        conn = sqlite3.connect("intel_graph.db")
+        cursor = conn.cursor()
+        
+        # Delete all data from tables
+        cursor.execute("DELETE FROM entities")
+        cursor.execute("DELETE FROM articles")
+        
+        # Reset auto-increment counters
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name='entities'")
+        cursor.execute("DELETE FROM sqlite_sequence WHERE name='articles'")
+        
+        conn.commit()
+        conn.close()
+        
+        return True, "✅ All intelligence data cleared successfully"
+    except Exception as e:
+        return False, f"❌ Error clearing database: {str(e)}"
+
 # --- DASHBOARD LAYOUT ---
 def main():
     print("MAIN: Starting main() function")
@@ -377,6 +401,33 @@ def main():
             st.sidebar.subheader("📍 Regional Coverage")
             region_counts = df_articles['region'].value_counts()
             st.sidebar.bar_chart(region_counts)
+        
+        st.sidebar.divider()
+        
+        # === SIDEBAR: DANGER ZONE ===
+        with st.sidebar.expander("⚠️ Danger Zone", expanded=False):
+            st.warning("**Clear All Data**: This will permanently delete all collected intelligence from the database.")
+            
+            # Confirmation checkbox
+            confirm_clear = st.checkbox("I understand this cannot be undone", key="confirm_clear")
+            
+            # Clear button (only enabled if confirmed)
+            if st.button(
+                "🗑️ Clear All Data", 
+                type="secondary",
+                disabled=not confirm_clear,
+                help="Delete all articles and entities from database"
+            ):
+                success, message = clear_database()
+                if success:
+                    st.success(message)
+                    # Reset session state
+                    st.session_state.region_filter = "All Regions"
+                    st.session_state.entity_type = "All Types"
+                    st.session_state.search_term = ""
+                    st.rerun()
+                else:
+                    st.error(message)
         
         # === MAIN AREA: TABS ===
         tab1, tab2, tab3, tab4 = st.tabs(["🔗 Network Graph", "📊 Analytics", "📄 Articles", "ℹ️ About"])
