@@ -7,8 +7,16 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 class IntelAnalyst:
     def __init__(self):
         print("[*] Loading Neural Network Models (spaCy & VADER)...")
-        # Load the English language model
-        self.nlp = spacy.load("en_core_web_sm")
+        
+        # Download spaCy model if not already installed (for Streamlit Cloud)
+        try:
+            self.nlp = spacy.load("en_core_web_sm")
+        except OSError:
+            print("[*] Downloading spaCy language model...")
+            import subprocess
+            subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
+            self.nlp = spacy.load("en_core_web_sm")
+        
         # Load the sentiment analyzer
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
 
