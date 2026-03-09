@@ -1,4 +1,4 @@
-# 🕵️ Automated Conflict Intelligence Monitor
+# Automated Conflict Intelligence Monitor
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -9,19 +9,6 @@
 
 **Reduces manual intelligence gathering time by 95%** | **Processes 1000+ articles/hour with NLP** | **Visualizes 200+ entity relationships in real-time**
 
----
-
-## 📸 Screenshots
-
-### Interactive Network Graph
-![Network Graph](https://via.placeholder.com/800x400/1e1e1e/ffffff?text=Entity+Relationship+Network)
-*Entity co-occurrence network showing relationships between people, organizations, and locations*
-
-### Multi-Region Dashboard
-![Dashboard](https://via.placeholder.com/800x400/1e1e1e/ffffff?text=Intelligence+Dashboard)
-*Interactive dashboard with region selector, analytics, and sentiment tracking*
-
----
 
 ## ✨ Key Features
 
@@ -96,7 +83,7 @@
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Option 1: Standard Installation
 
@@ -198,7 +185,7 @@ archivist.close()
 
 ---
 
-## 📊 Project Structure
+## Project Structure
 
 ```
 osint-conflict-monitor/
@@ -221,7 +208,7 @@ osint-conflict-monitor/
 
 ---
 
-## 🧪 Testing
+## Testing
 
 Run the test suite:
 
@@ -303,22 +290,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📧 Contact
 
-**Your Name** - [your.email@example.com](mailto:your.email@example.com)
+**Your Name** - [your.email@example.com](mailto:nomoore@willamette.edu)
 
-Project Link: [https://github.com/YourUsername/osint-conflict-monitor](https://github.com/YourUsername/osint-conflict-monitor)
-
----
-
-## 🚧 Roadmap
-
-- [ ] Real-time streaming updates
-- [ ] Email/Slack alert system
-- [ ] PDF report generation
-- [ ] Geographic heatmaps
-- [ ] Multi-language support
-- [ ] Historical trend analysis
-- [ ] AI-powered threat predictions
-
----
-
-**⭐ Star this repo if you find it useful!**
+Project Link: [https://github.com/YourUsername/osint-conflict-monitor](https://github.com/NicholasmooreWU/osint-conflict-monitor)
