@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  osint-dashboard:
+    build: .
+    container_name: osint-conflict-monitor
+    ports:
+      - "8501:8501"
+    environment:
+      - API_KEY=${API_KEY}
+    volumes:
+      - ./intel_data:/app/intel_data
+      - ./intel_graph.db:/app/intel_graph.db
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+volumes:
+  intel_data:
+  database:

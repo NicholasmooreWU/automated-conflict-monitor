@@ -27,7 +27,8 @@ class IntelArchivist:
                 source TEXT,
                 published_at TEXT,
                 sentiment REAL,
-                summary TEXT
+                summary TEXT,
+                region TEXT
             )
         ''')
 
@@ -45,7 +46,7 @@ class IntelArchivist:
         self.conn.commit()
         print("[+] Database schema verified.")
 
-    def ingest_data(self, json_file):
+    def ingest_data(self, json_file, region="Unknown"):
         """
         Reads the processed JSON and inserts it into the SQL database.
         """
@@ -64,9 +65,9 @@ class IntelArchivist:
                 # 1. Insert Article
                 # We use INSERT OR IGNORE to prevent duplicates if you run this twice
                 self.cursor.execute('''
-                    INSERT OR IGNORE INTO articles (title, source, published_at, sentiment)
-                    VALUES (?, ?, ?, ?)
-                ''', (item['title'], item['source'], item['published_at'], item['sentiment']))
+                    INSERT OR IGNORE INTO articles (title, source, published_at, sentiment, region)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (item['title'], item['source'], item['published_at'], item['sentiment'], region))
                 
                 # If the article was skipped (duplicate), don't add entities
                 if self.cursor.rowcount == 0:

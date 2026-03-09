@@ -89,17 +89,17 @@ if __name__ == "__main__":
     
     if raw_data:
         # 3. Process the Data
-        # We limit to first 20 articles for speed during testing
-        structured_intel = analyst.process_batch(raw_data[:20])
+        structured_intel = analyst.process_batch(raw_data)
         
         # 4. Save Results
         analyst.save_processed_intel(structured_intel)
         
         # 5. Show a sample
-        print("\n--- ANALYST REPORT SAMPLE ---")
-        sample = structured_intel[0]
-        print(f"Headline: {sample['title']}")
-        print(f"Sentiment Score: {sample['sentiment']} (Range: -1.0 to 1.0)")
-        print(f"Detected Entities: {sample['entities']}")
+        if structured_intel:
+            print("\n--- ANALYST REPORT SAMPLE ---")
+            sample = structured_intel[0]
+            print(f"Headline: {sample['title']}")
+            print(f"Sentiment Score: {sample['sentiment']} (Range: -1.0 to 1.0)")
+            print(f"Detected Entities: {sample['entities']}")
     else:
         print("[!] No intelligence files found. Run collector.py first.")

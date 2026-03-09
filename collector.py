@@ -1,12 +1,13 @@
 import requests
 import json
 import os
+import re
 from datetime import datetime
+from dotenv import load_dotenv
 
 class IntelCollector:
     def __init__(self, api_key):
-        # SECURITY FIX: Do not hardcode the key here. 
-        # Use the variable passed in from the outside.
+        """Initialize collector with API key."""
         self.api_key = api_key 
         self.base_url = "https://newsapi.org/v2/everything"
     
@@ -36,6 +37,19 @@ class IntelCollector:
             print(f"[!] Network Error: {e}")
             return []
 
+    def _sanitize_filename(self, text):
+        """
+        Sanitizes text to prevent path traversal attacks.
+        Removes special characters and path separators.
+        """
+        # Remove or replace dangerous characters
+        sanitized = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', text)
+        # Remove dots at the start (prevents relative paths like ..)
+        sanitized = sanitized.lstrip('.')
+        # Limit length to prevent filesystem issues
+        sanitized = sanitized[:100]
+        return sanitized if sanitized else "unknown"
+
     def save_raw_intel(self, data, topic):
         """
         Saves the raw gathered intelligence to a JSON file.
@@ -45,7 +59,8 @@ class IntelCollector:
             return
 
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        filename = f"raw_intel_{topic}_{timestamp}.json"
+        safe_topic = self._sanitize_filename(topic)
+        filename = f"raw_intel_{safe_topic}_{timestamp}.json"
         
         os.makedirs("intel_data", exist_ok=True)
         filepath = os.path.join("intel_data", filename)
@@ -57,12 +72,14 @@ class IntelCollector:
 
 # --- EXECUTION BLOCK ---
 if __name__ == "__main__":
-    # 1. SETUP: Put the key here for local testing, 
-    # BUT change it to "YOUR_API_KEY" before committing to GitHub!
-    API_KEY = "7300ab8185364e989089f03981f2db1f"  
-    
+    # Load environment variables from .env file
+    load_dotenv()
+    API_KEY = os.getenv("API_KEY")
+    if not API_KEY or API_KEY == "your_real_api_key_here":
+        raise ValueError("API_KEY not set. Please set it in a .env file.")
+
     # 2. TARGET
-    TARGET_TOPIC = "South China Sea" 
+    TARGET_TOPIC = "Middle East"
 
     # 3. RUN
     bot = IntelCollector(API_KEY)

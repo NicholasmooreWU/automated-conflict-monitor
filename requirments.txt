@@ -1,8 +1,0 @@
-streamlit
-pandas
-plotly
-spacy
-vaderSentiment
-pyvis
-networkx
-requests
