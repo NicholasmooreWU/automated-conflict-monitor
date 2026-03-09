@@ -75,29 +75,27 @@ def load_data(region_filter=None):
     
     try:
         conn = sqlite3.connect("intel_graph.db")
-    except Exception as e:
-        st.error(f"Database connection error: {e}")
-        return pd.DataFrame(), pd.DataFrame()
-    
-    if region_filter and region_filter != "All Regions":
-        # Get Articles for specific region
-        df_articles = pd.read_sql("SELECT * FROM articles WHERE region = ?", conn, params=(region_filter,))
-        # Get Entities for those articles
-        if not df_articles.empty:
-            article_ids = df_articles['id'].tolist()
-            placeholders = ','.join('?' * len(article_ids))
-            df_entities = pd.read_sql(f"SELECT * FROM entities WHERE article_id IN ({placeholders})", conn, params=article_ids)
+        
+        if region_filter and region_filter != "All Regions":
+            # Get Articles for specific region
+            df_articles = pd.read_sql("SELECT * FROM articles WHERE region = ?", conn, params=(region_filter,))
+            # Get Entities for those articles
+            if not df_articles.empty:
+                article_ids = df_articles['id'].tolist()
+                placeholders = ','.join('?' * len(article_ids))
+                df_entities = pd.read_sql(f"SELECT * FROM entities WHERE article_id IN ({placeholders})", conn, params=article_ids)
+            else:
+                df_entities = pd.DataFrame()
         else:
-            df_entities = pd.DataFrame()
-    else:
-        # Get all data
-        df_articles = pd.read_sql("SELECT * FROM articles", conn)
-        df_entities = pd.read_sql("SELECT * FROM entities", conn)
+            # Get all data
+            df_articles = pd.read_sql("SELECT * FROM articles", conn)
+            df_entities = pd.read_sql("SELECT * FROM entities", conn)
         
         conn.close()
         return df_articles, df_entities
+        
     except Exception as e:
-        if conn:
+        if 'conn' in locals():
             conn.close()
         st.error(f"Error loading data: {e}")
         return pd.DataFrame(), pd.DataFrame()
