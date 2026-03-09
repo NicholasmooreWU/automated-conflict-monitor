@@ -7,51 +7,8 @@ import streamlit.components.v1 as components
 import os
 from dotenv import load_dotenv
 
-# --- CONFIGURATION ---
-st.set_page_config(page_title="Conflict Monitor", layout="wide")
-
-# Load environment variables
+# Load environment variables (safe at module level)
 load_dotenv()
-
-# --- DATABASE INITIALIZATION ---
-def init_database():
-    """Initialize database if it doesn't exist"""
-    try:
-        if not os.path.exists("intel_graph.db"):
-            conn = sqlite3.connect("intel_graph.db")
-            cursor = conn.cursor()
-            
-            # Create articles table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS articles (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    title TEXT UNIQUE,
-                    source TEXT,
-                    published_at TEXT,
-                    sentiment REAL,
-                    summary TEXT,
-                    region TEXT
-                )
-            ''')
-            
-            # Create entities table
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS entities (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    article_id INTEGER,
-                    name TEXT,
-                    type TEXT,
-                    FOREIGN KEY(article_id) REFERENCES articles(id)
-                )
-            ''')
-            
-            conn.commit()
-            conn.close()
-            return True
-        return False
-    except Exception as e:
-        st.error(f"Database initialization error: {e}")
-        return False
 
 # --- PREDEFINED REGIONS ---
 REGIONS = {
@@ -223,8 +180,50 @@ def create_network_graph(df_entities, entity_type_filter=None):
     net.save_graph("network.html")
     return "network.html"
 
+# --- DATABASE INITIALIZATION ---
+def init_database():
+    """Initialize database if it doesn't exist"""
+    try:
+        if not os.path.exists("intel_graph.db"):
+            conn = sqlite3.connect("intel_graph.db")
+            cursor = conn.cursor()
+            
+            # Create articles table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS articles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT UNIQUE,
+                    source TEXT,
+                    published_at TEXT,
+                    sentiment REAL,
+                    summary TEXT,
+                    region TEXT
+                )
+            ''')
+            
+            # Create entities table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS entities (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    article_id INTEGER,
+                    name TEXT,
+                    type TEXT,
+                    FOREIGN KEY(article_id) REFERENCES articles(id)
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            return True
+        return False
+    except Exception as e:
+        return False
+
 # --- DASHBOARD LAYOUT ---
 def main():
+    # Set page config (must be first Streamlit command)
+    st.set_page_config(page_title="Conflict Monitor", layout="wide")
+    
     # Initialize database on first run
     init_database()
     
