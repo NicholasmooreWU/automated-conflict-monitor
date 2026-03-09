@@ -16,6 +16,20 @@ st.set_page_config(page_title="Conflict Monitor", layout="wide")
 # Load environment variables
 load_dotenv()
 
+# --- DATABASE INITIALIZATION ---
+def init_database():
+    """Initialize database if it doesn't exist"""
+    if not os.path.exists("intel_graph.db"):
+        archivist = IntelArchivist("intel_graph.db")
+        archivist.connect()
+        archivist.create_schema()
+        archivist.close()
+        return True
+    return False
+
+# Initialize database on startup
+init_database()
+
 # --- PREDEFINED REGIONS ---
 REGIONS = {
     "Middle East": "Middle East conflict Israel Iran Gaza",
@@ -32,7 +46,15 @@ REGIONS = {
 
 # --- DATABASE CONNECTION ---
 def load_data(region_filter=None):
-    conn = sqlite3.connect("intel_graph.db")
+    """Load data from database with error handling"""
+    if not os.path.exists("intel_graph.db"):
+        return pd.DataFrame(), pd.DataFrame()
+    
+    try:
+        conn = sqlite3.connect("intel_graph.db")
+    except Exception as e:
+        st.error(f"Database connection error: {e}")
+        return pd.DataFrame(), pd.DataFrame()
     
     if region_filter and region_filter != "All Regions":
         # Get Articles for specific region
@@ -48,21 +70,28 @@ def load_data(region_filter=None):
         # Get all data
         df_articles = pd.read_sql("SELECT * FROM articles", conn)
         df_entities = pd.read_sql("SELECT * FROM entities", conn)
-    
-    conn.close()
-    return df_articles, df_entities
+        
+        conn.close()
+        return df_articles, df_entities
+    except Exception as e:
+        if conn:
+            conn.close()
+        st.error(f"Error loading data: {e}")
+        return pd.DataFrame(), pd.DataFrame()
 
 def get_available_regions():
     """Get list of regions currently in the database"""
-    conn = sqlite3.connect("intel_graph.db")
+    if not os.path.exists("intel_graph.db"):
+        return []
+    
     try:
+        conn = sqlite3.connect("intel_graph.db")
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT region FROM articles WHERE region IS NOT NULL ORDER BY region")
         regions = [row[0] for row in cursor.fetchall()]
         conn.close()
         return regions
-    except:
-        conn.close()
+    except Exception as e:
         return []
 
 # --- INTELLIGENCE COLLECTION PIPELINE ---
@@ -229,14 +258,11 @@ def main():
     st.sidebar.divider()
     
     # === LOAD DATA ===
-    try:
-        df_articles, df_entities = load_data(region_filter if region_filter != "All Regions" else None)
-    except Exception as e:
-        st.error(f"Database error: {e}. Run the collection pipeline first!")
-        return
+    df_articles, df_entities = load_data(region_filter if region_filter != "All Regions" else None)
     
     if df_articles.empty:
         st.warning("📭 No intelligence data available. Use the sidebar to collect fresh intelligence!")
+        st.info("💡 **Getting Started:** Select a region above and click '🚀 Collect Fresh Intelligence' to begin monitoring.")
         return
     
     # === SIDEBAR: STATISTICS ===
