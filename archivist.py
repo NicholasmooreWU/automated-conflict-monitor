@@ -62,6 +62,10 @@ class IntelArchivist:
 
         for item in data:
             try:
+                # Validate data types before insertion
+                if not isinstance(item.get('sentiment'), (int, float)):
+                    raise ValueError(f"Invalid sentiment value: {item.get('sentiment')}")
+                
                 # 1. Insert Article
                 # We use INSERT OR IGNORE to prevent duplicates if you run this twice
                 self.cursor.execute('''
@@ -84,7 +88,7 @@ class IntelArchivist:
                         VALUES (?, ?, ?)
                     ''', (article_id, ent_name, ent_type))
 
-            except sqlite3.Error as e:
+            except (sqlite3.Error, ValueError) as e:
                 print(f"[!] Database Error: {e}")
 
         self.conn.commit()

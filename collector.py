@@ -33,7 +33,7 @@ class IntelCollector:
             print(f"[+] Collection successful. Found {total_results} intelligence items.")
             return data.get('articles', [])
             
-        except requests.exceptions.RequestException as e:
+        except (requests.exceptions.RequestException, Exception) as e:
             print(f"[!] Network Error: {e}")
             return []
 
@@ -44,7 +44,10 @@ class IntelCollector:
         """
         # Remove or replace dangerous characters
         sanitized = re.sub(r'[<>:"/\\|?*\x00-\x1f]', '_', text)
-        # Remove dots at the start (prevents relative paths like ..)
+        # Remove dangerous dot-dot sequences that could traverse directories
+        sanitized = re.sub(r'\.\.\.+', '', sanitized)  # Remove 3+ consecutive dots
+        sanitized = re.sub(r'\.\.', '', sanitized)  # Remove .. sequences
+        # Remove dots at the start (prevents relative paths)
         sanitized = sanitized.lstrip('.')
         # Limit length to prevent filesystem issues
         sanitized = sanitized[:100]
