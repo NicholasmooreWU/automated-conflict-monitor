@@ -93,9 +93,15 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=20):
         from analyst import IntelAnalyst
         from archivist import IntelArchivist
         
-        API_KEY = os.getenv("API_KEY")
+        # Try Streamlit secrets first, then fall back to .env
+        API_KEY = None
+        try:
+            API_KEY = st.secrets.get("API_KEY")
+        except:
+            API_KEY = os.getenv("API_KEY")
+        
         if not API_KEY:
-            return False, "API_KEY not found in environment variables"
+            return False, "⚠️ API_KEY not configured. Dashboard owner: Add API_KEY to Streamlit Cloud secrets."
         
         # Step 1: Collect
         with st.spinner(f"🔍 Collecting intelligence on {region_name}..."):
@@ -249,6 +255,17 @@ def main():
         # === SIDEBAR: INTELLIGENCE COLLECTION ===
         st.sidebar.header("🔍 Intelligence Collection")
         
+        # Check API key availability
+        api_key_available = False
+        try:
+            api_key_available = bool(st.secrets.get("API_KEY"))
+        except:
+            api_key_available = bool(os.getenv("API_KEY"))
+        
+        if not api_key_available:
+            st.sidebar.warning("⚠️ API Key not configured. Data collection disabled.")
+            st.sidebar.info("💡 **Viewing Mode**: Browse existing intelligence data below.")
+        
         # Region selector
         selected_region = st.sidebar.selectbox(
             "Select Region to Monitor",
@@ -266,7 +283,7 @@ def main():
             max_articles = 20
         
         # Collect Intelligence Button
-        if st.sidebar.button("🚀 Collect Fresh Intelligence", type="primary"):
+        if st.sidebar.button("🚀 Collect Fresh Intelligence", type="primary", disabled=not api_key_available):
             success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles)
             if success:
                 st.sidebar.success(message)
@@ -450,17 +467,40 @@ def main():
             - **NORP**: Nationalities or religious/political groups
             
             ### 🚀 How to Use
-            1. Select a region from the sidebar
-            2. Click "Collect Fresh Intelligence" to gather latest data
-            3. Explore the network graph to see entity relationships
-            4. Use filters to focus on specific regions or entity types
-            5. Compare multiple regions by selecting "All Regions"
+            
+            **For Public Users (Viewing Mode):**
+            1. Browse pre-collected intelligence data from various regions
+            2. Explore the network graph to see entity relationships
+            3. Use filters to focus on specific regions or entity types
+            4. Export data to CSV for further analysis
+            
+            **For Dashboard Administrators:**
+            1. Configure API_KEY in Streamlit Cloud secrets
+            2. Select a region and click "Collect Fresh Intelligence"
+            3. New data is automatically collected, analyzed, and archived
+            4. All users can then view the updated intelligence
+            
+            ### 🔐 Data Collection Access
+            - **API Key Required**: Fresh data collection requires a NewsAPI key
+            - **Public Access**: All users can view existing data without authentication
+            - **Administrator**: Configures API key to enable data collection
             
             ### ⚠️ Limitations
             - Data limited to publicly available news sources
             - Sentiment analysis may not capture nuance
             - Entity extraction depends on mention frequency
             - Update frequency limited by API rate limits
+            
+            ### 📜 Legal & Attribution
+            - **Data Source**: News data provided by [NewsAPI.org](https://newsapi.org)
+            - **Usage**: Educational and research purposes
+            - **Disclaimer**: This tool aggregates publicly available information for analysis.
+              News content copyright belongs to original publishers.
+            - **License**: This software is licensed under MIT License
+            - **No Warranty**: Provided "as-is" without guarantees of accuracy or completeness
+            
+            ### 🔗 Attribution
+            Built with: spaCy • VADER • NetworkX • Streamlit • NewsAPI • SQLite
             """)
     except Exception as e:
         print(f"ERROR IN MAIN: {type(e).__name__}: {str(e)}")
