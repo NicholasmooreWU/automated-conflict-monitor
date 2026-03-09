@@ -5,10 +5,20 @@ import networkx as nx
 from pyvis.network import Network
 import streamlit.components.v1 as components
 import os
+import sys
+import traceback
 from dotenv import load_dotenv
+
+# Add error logging that prints to console (visible in Streamlit Cloud logs)
+print("=" * 80)
+print("DASHBOARD STARTUP - Beginning imports and initialization")
+print(f"Python version: {sys.version}")
+print(f"Streamlit version: {st.__version__}")
+print("=" * 80)
 
 # Load environment variables (safe at module level)
 load_dotenv()
+print("✓ Environment variables loaded")
 
 # --- PREDEFINED REGIONS ---
 REGIONS = {
@@ -221,23 +231,29 @@ def init_database():
 
 # --- DASHBOARD LAYOUT ---
 def main():
-    # Set page config (must be first Streamlit command)
-    st.set_page_config(page_title="Conflict Monitor", layout="wide")
+    print("MAIN: Starting main() function")
     
-    # Initialize database on first run
-    init_database()
-    
-    st.title("🕵️ Automated Conflict Intelligence Monitor")
-    st.markdown("### Real-time OSINT & Network Analysis Dashboard")
-    
-    # === SIDEBAR: INTELLIGENCE COLLECTION ===
-    st.sidebar.header("🔍 Intelligence Collection")
-    
-    # Region selector
-    selected_region = st.sidebar.selectbox(
-        "Select Region to Monitor",
-        options=list(REGIONS.keys()),
-        index=0
+    try:
+        # Set page config (must be first Streamlit command)
+        print("MAIN: Setting page config")
+        st.set_page_config(page_title="Conflict Monitor", layout="wide")
+        
+        # Initialize database on first run
+        print("MAIN: Initializing database")
+        init_database()
+        
+        print("MAIN: Rendering UI")
+        st.title("🕵️ Automated Conflict Intelligence Monitor")
+        st.markdown("### Real-time OSINT & Network Analysis Dashboard")
+        
+        # === SIDEBAR: INTELLIGENCE COLLECTION ===
+        st.sidebar.header("🔍 Intelligence Collection")
+        
+        # Region selector
+        selected_region = st.sidebar.selectbox(
+            "Select Region to Monitor",
+            options=list(REGIONS.keys()),
+            index=0
     )
     
     # Custom search query (advanced users)
@@ -448,4 +464,22 @@ def main():
         """)
 
 if __name__ == "__main__":
-    main()
+    print("=" * 80)
+    print("STARTUP: Executing main() function")
+    print("=" * 80)
+    try:
+        main()
+        print("STARTUP: main() completed successfully")
+    except Exception as e:
+        print("=" * 80)
+        print(f"FATAL ERROR IN MAIN: {type(e).__name__}: {str(e)}")
+        print("=" * 80)
+        traceback.print_exc()
+        print("=" * 80)
+        # Try to show error in Streamlit if possible
+        try:
+            st.error(f"Fatal Error: {str(e)}")
+            st.code(traceback.format_exc())
+        except:
+            pass
+        raise
