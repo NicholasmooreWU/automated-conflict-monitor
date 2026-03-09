@@ -239,6 +239,15 @@ def init_database():
 def main():
     print("MAIN: Starting main() function")
     
+    # Initialize session state for clean user sessions
+    if 'initialized' not in st.session_state:
+        st.session_state.initialized = True
+        st.session_state.region_filter = "All Regions"
+        st.session_state.entity_type = "All Types"
+        st.session_state.search_term = ""
+        st.session_state.show_welcome = True
+        print("SESSION: New user session initialized with fresh state")
+    
     try:
         # Set page config (must be first Streamlit command)
         print("MAIN: Setting page config")
@@ -251,6 +260,13 @@ def main():
         print("MAIN: Rendering UI")
         st.title("🕵️ Automated Conflict Intelligence Monitor")
         st.markdown("### Real-time OSINT & Network Analysis Dashboard")
+        
+        # Welcome message for new users (dismissible)
+        if st.session_state.get('show_welcome', False):
+            st.info("👋 **Welcome!** Each user gets an independent view. Use filters to explore intelligence data, or reset anytime with the 🔄 button.")
+            if st.button("Got it! ✓"):
+                st.session_state.show_welcome = False
+                st.rerun()
         
         # === SIDEBAR: INTELLIGENCE COLLECTION ===
         st.sidebar.header("🔍 Intelligence Collection")
@@ -296,25 +312,49 @@ def main():
         # === SIDEBAR: DATA FILTERING ===
         st.sidebar.header("📊 Data Filters")
         
+        # Reset button for clean view
+        col1, col2 = st.sidebar.columns([3, 1])
+        with col2:
+            if st.button("🔄", help="Reset all filters to default"):
+                st.session_state.region_filter = "All Regions"
+                st.session_state.entity_type = "All Types"
+                st.session_state.search_term = ""
+                st.rerun()
+        with col1:
+            st.markdown("**View Options**")
+        
         # Get available regions from database
         available_regions = get_available_regions()
         
         if available_regions:
+            # Use session state to persist selection
+            default_index = 0
+            if st.session_state.region_filter in available_regions:
+                default_index = (["All Regions"] + available_regions).index(st.session_state.region_filter)
+            
             region_filter = st.sidebar.selectbox(
                 "View Data From:",
                 options=["All Regions"] + available_regions,
-                index=0
+                index=default_index,
+                key="region_select"
             )
+            st.session_state.region_filter = region_filter
         else:
             region_filter = None
             st.sidebar.warning("No data in database. Collect intelligence first!")
         
-        # Entity type filter
+        # Entity type filter with session state
+        entity_type_options = ["All Types", "GPE", "ORG", "PERSON", "NORP"]
+        entity_default_index = entity_type_options.index(st.session_state.entity_type) if st.session_state.entity_type in entity_type_options else 0
+        
         entity_type = st.sidebar.selectbox(
             "Filter Entity Type:",
-            options=["All Types", "GPE", "ORG", "PERSON", "NORP"],
-            help="GPE: Countries/Cities, ORG: Organizations, PERSON: People, NORP: Nationalities"
+            options=entity_type_options,
+            index=entity_default_index,
+            help="GPE: Countries/Cities, ORG: Organizations, PERSON: People, NORP: Nationalities",
+            key="entity_select"
         )
+        st.session_state.entity_type = entity_type
         
         st.sidebar.divider()
         
@@ -411,8 +451,13 @@ def main():
         with tab3:
             st.subheader("📄 Intelligence Reports")
             
-            # Search functionality
-            search_term = st.text_input("🔍 Search articles by title", "")
+            # Search functionality with session state
+            search_term = st.text_input(
+                "🔍 Search articles by title", 
+                value=st.session_state.search_term,
+                key="article_search"
+            )
+            st.session_state.search_term = search_term
             
             display_df = df_articles.copy()
             if search_term:
