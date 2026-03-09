@@ -7,6 +7,8 @@ import streamlit.components.v1 as components
 import os
 import sys
 import traceback
+import uuid
+import hashlib
 from dotenv import load_dotenv
 
 # Add error logging that prints to console (visible in Streamlit Cloud logs)
@@ -137,7 +139,7 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=20):
 def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
     """
     Builds a network where Nodes = Entities and Edges = Co-occurrence in an article.
-    Each user gets their own graph file to prevent cross-session interference.
+    Returns HTML content directly instead of saving to file to prevent cross-user interference.
     """
     if df_entities.empty:
         return None
@@ -193,10 +195,25 @@ def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
     net.force_atlas_2based(gravity=-50, central_gravity=0.01, spring_length=100, spring_strength=0.08)
     net.show_buttons(filter_=['physics'])
     
-    # Save to unique HTML file per session to prevent user interference
-    graph_filename = f"network_{session_id}.html" if session_id else "network.html"
-    net.save_graph(graph_filename)
-    return graph_filename
+    # Generate HTML content directly without saving to file
+    # This prevents any cross-user file conflicts
+    try:
+        # PyVis generates HTML - we'll capture it as a string
+        import tempfile
+        with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.html') as f:
+            temp_file = f.name
+        net.save_graph(temp_file)
+        
+        with open(temp_file, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+        
+        # Clean up temp file immediately
+        os.unlink(temp_file)
+        
+        return html_content
+    except Exception as e:
+        print(f"ERROR generating graph: {e}")
+        return None
 
 # --- DATABASE INITIALIZATION ---
 def init_database():
@@ -263,23 +280,26 @@ def clear_database():
 
 def cleanup_old_graphs(max_age_hours=24):
     """
-    Clean up old graph HTML files to prevent disk space issues.
-    Removes files older than max_age_hours.
+    Clean up old graph HTML files from previous versions.
+    New version generates graphs in-memory only, but this cleans up legacy files.
     """
     try:
         import time
         import glob
         
         current_time = time.time()
-        graph_files = glob.glob("network_*.html")
+        graph_files = glob.glob("network*.html")  # All network HTML files
         
         deleted_count = 0
         for filepath in graph_files:
-            # Check file age
-            file_age_hours = (current_time - os.path.getmtime(filepath)) / 3600
-            if file_age_hours > max_age_hours:
-                os.remove(filepath)
-                deleted_count += 1
+            try:
+                # Check file age
+                file_age_hours = (current_time - os.path.getmtime(filepath)) / 3600
+                if file_age_hours > max_age_hours:
+                    os.remove(filepath)
+                    deleted_count += 1
+            except:
+                pass  # Skip files that can't be deleted
         
         if deleted_count > 0:
             print(f"CLEANUP: Removed {deleted_count} old graph files")
@@ -299,8 +319,8 @@ def main():
         st.session_state.entity_type = "All Types"
         st.session_state.search_term = ""
         st.session_state.show_welcome = True
-        # Create unique session ID for this user's graph file
-        st.session_state.session_id = id(st.session_state)
+        # Create truly unique session ID using UUID
+        st.session_state.session_id = str(uuid.uuid4())
         print(f"SESSION: New user session initialized with ID {st.session_state.session_id}")
     
     try:
@@ -480,14 +500,13 @@ def main():
                     st.metric("Connections", len(df_entities))
             
             if not df_entities.empty:
-                # Pass session ID to create unique graph file for this user
+                # Generate graph HTML content directly (no file saving)
                 session_id = st.session_state.get('session_id', None)
-                graph_html = create_network_graph(df_entities, entity_type, session_id)
+                graph_html_content = create_network_graph(df_entities, entity_type, session_id)
                 
-                if graph_html and os.path.exists(graph_html):
-                    with open(graph_html, 'r', encoding='utf-8') as f:
-                        source_code = f.read()
-                    components.html(source_code, height=680)
+                if graph_html_content:
+                    # Render the graph directly from HTML content
+                    components.html(graph_html_content, height=680, scrolling=False)
                 else:
                     st.warning("No entities to display with current filters.")
             else:
