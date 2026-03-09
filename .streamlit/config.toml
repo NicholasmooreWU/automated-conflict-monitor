@@ -1,6 +1,6 @@
 [server]
 headless = true
-port = 8504
+# Port removed - let Streamlit use default 8501 for cloud deployment
 enableCORS = false
 enableXsrfProtection = true
 
