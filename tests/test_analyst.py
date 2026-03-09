@@ -12,9 +12,15 @@ class TestIntelAnalyst:
     @pytest.fixture
     def analyst(self):
         """Create an analyst instance for testing"""
-        with patch('analyst.spacy.load'), \
-             patch('analyst.SentimentIntensityAnalyzer'):
-            return IntelAnalyst()
+        with patch('analyst.spacy.load') as mock_spacy, \
+             patch('analyst.SentimentIntensityAnalyzer') as mock_vader:
+            mock_nlp = Mock()
+            mock_spacy.return_value = mock_nlp
+            mock_sentiment = Mock()
+            mock_vader.return_value = mock_sentiment
+            
+            analyst_instance = IntelAnalyst()
+            return analyst_instance
     
     @pytest.fixture
     def sample_article(self):

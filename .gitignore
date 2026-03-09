@@ -19,7 +19,12 @@ intel_data/
 
 # Environment files (secrets)
 .env
-.env.*
+.env.local
+.env.production
+.env.development
+
+# Keep .env.example (template for users)
+!.env.example
 
 # IDE
 .vscode/
