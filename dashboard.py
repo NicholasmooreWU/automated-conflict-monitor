@@ -6,9 +6,6 @@ from pyvis.network import Network
 import streamlit.components.v1 as components
 import os
 from dotenv import load_dotenv
-from collector import IntelCollector
-from analyst import IntelAnalyst
-from archivist import IntelArchivist
 
 # --- CONFIGURATION ---
 st.set_page_config(page_title="Conflict Monitor", layout="wide")
@@ -19,16 +16,42 @@ load_dotenv()
 # --- DATABASE INITIALIZATION ---
 def init_database():
     """Initialize database if it doesn't exist"""
-    if not os.path.exists("intel_graph.db"):
-        archivist = IntelArchivist("intel_graph.db")
-        archivist.connect()
-        archivist.create_schema()
-        archivist.close()
-        return True
-    return False
-
-# Initialize database on startup
-init_database()
+    try:
+        if not os.path.exists("intel_graph.db"):
+            conn = sqlite3.connect("intel_graph.db")
+            cursor = conn.cursor()
+            
+            # Create articles table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS articles (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    title TEXT UNIQUE,
+                    source TEXT,
+                    published_at TEXT,
+                    sentiment REAL,
+                    summary TEXT,
+                    region TEXT
+                )
+            ''')
+            
+            # Create entities table
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS entities (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    article_id INTEGER,
+                    name TEXT,
+                    type TEXT,
+                    FOREIGN KEY(article_id) REFERENCES articles(id)
+                )
+            ''')
+            
+            conn.commit()
+            conn.close()
+            return True
+        return False
+    except Exception as e:
+        st.error(f"Database initialization error: {e}")
+        return False
 
 # --- PREDEFINED REGIONS ---
 REGIONS = {
@@ -100,6 +123,11 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=20):
     Runs the complete intelligence pipeline: Collect -> Analyze -> Archive
     """
     try:
+        # Lazy import to avoid startup crashes
+        from collector import IntelCollector
+        from analyst import IntelAnalyst
+        from archivist import IntelArchivist
+        
         API_KEY = os.getenv("API_KEY")
         if not API_KEY:
             return False, "API_KEY not found in environment variables"
@@ -199,6 +227,9 @@ def create_network_graph(df_entities, entity_type_filter=None):
 
 # --- DASHBOARD LAYOUT ---
 def main():
+    # Initialize database on first run
+    init_database()
+    
     st.title("🕵️ Automated Conflict Intelligence Monitor")
     st.markdown("### Real-time OSINT & Network Analysis Dashboard")
     
