@@ -498,12 +498,21 @@ def main():
             with col1:
                 st.info("**Legend:** 🔴 Countries/Locations  🔵 People  🟢 Organizations  🟡 Nationalities")
             with col2:
-                st.metric("Connections", 0)
+                if not df_entities.empty:
+                    st.metric("Connections", len(df_entities))
             
-            # Always start with no connections for each user session
-            st.info("No connections: The network graph is reset for each session. Collect or filter data to see connections.")
-            # Optionally, you can add a button to allow users to load connections if desired
-            # If you want to allow users to load the graph after reset, add a button here
+            if not df_entities.empty:
+                # Generate graph HTML content directly (no file saving)
+                session_id = st.session_state.get('session_id', None)
+                graph_html_content = create_network_graph(df_entities, entity_type, session_id)
+                
+                if graph_html_content:
+                    # Render the graph directly from HTML content
+                    components.html(graph_html_content, height=680, scrolling=False)
+                else:
+                    st.warning("No entities to display with current filters.")
+            else:
+                st.warning("No entities found in the selected data.")
         
         # TAB 2: ANALYTICS
         with tab2:
