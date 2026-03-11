@@ -300,6 +300,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contact
 
-**Your Name** - [your.email@example.com](mailto:nomoore@willamette.edu)
+**Nicholas Moore** - [nomoore@willamette.edu.com](mailto:nomoore@willamette.edu)
 
-Project Link: [https://github.com/YourUsername/osint-conflict-monitor](https://github.com/NicholasmooreWU/osint-conflict-monitor)
+Project Link: [https://github.com/NicholasmooreWU/automated-conflict-monitor](https://github.com/NicholasmooreWU/automated-conflict-monitor)
