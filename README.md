@@ -10,35 +10,36 @@
 **Reduces manual intelligence gathering time by 95%** | **Processes 1000+ articles/hour with NLP** | **Visualizes 200+ entity relationships in real-time**
 
 
-## ✨ Key Features
+## Key Features
 
-### 🔍 Intelligence Collection
-- **Multi-Region Monitoring**: 10 pre-configured conflict zones (Middle East, South China Sea, Ukraine, etc.)
-- **Live Data Integration**: Real-time news ingestion via NewsAPI
-- **One-Click Pipeline**: Automated collect → analyze → visualize workflow
-- **Custom Queries**: Advanced search for specific topics or keywords
+### Intelligence Collection
+- Multi-Region Monitoring: 10 pre-configured conflict zones (Middle East, South China Sea, Ukraine, etc.)
+- Live Data Integration: Real-time news ingestion via NewsAPI
+- One-Click Pipeline: Automated collect → analyze → visualize workflow
+- Custom Queries: Advanced search for specific topics or keywords
 
-### 🧠 AI-Powered Analysis
-- **Named Entity Recognition**: Identifies people, organizations, locations, and nationalities using spaCy
-- **Sentiment Analysis**: Tracks emotional tone with VADER (-1.0 to +1.0 scale)
-- **Relationship Mapping**: Discovers hidden connections through co-occurrence analysis
-- **Historical Tracking**: Monitors trends and patterns over time
+### AI-Powered Analysis
+- Named Entity Recognition: Identifies people, organizations, locations, and nationalities using spaCy
+- Sentiment Analysis: Tracks emotional tone with VADER (-1.0 to +1.0 scale)
+- Relationship Mapping: Discovers hidden connections through co-occurrence analysis
+- Historical Tracking: Monitors trends and patterns over time
 
-### 📊 Interactive Visualization
-- **Network Graphs**: Color-coded entity relationship maps with interactive physics
-- **Analytics Dashboard**: Top entities, sentiment trends, and connection analysis
-- **Entity Filtering**: Focus on specific types (GPE/ORG/PERSON/NORP)
-- **Data Export**: CSV downloads for external analysis
+### Interactive Visualization
+- Network Graphs: Color-coded entity relationship maps with interactive physics
+- Analytics Dashboard: Top entities, sentiment trends, and connection analysis
+- Entity Filtering: Focus on specific types (GPE/ORG/PERSON/NORP)
+- Data Export: CSV downloads for external analysis
 
-### 🔒 Security Features
-- **Path Traversal Protection**: Filename sanitization prevents directory escape attacks
-- **Environment Variables**: API keys stored securely in `.env` files
-- **Input Validation**: Sanitizes all user inputs and API responses
-- **SQL Injection Prevention**: Parameterized queries throughout
+### Security Features
+- Path Traversal Protection: Filename sanitization prevents directory escape attacks
+- Environment Variables: API keys stored securely in `.env` files
+- Input Validation: Sanitizes all user inputs and API responses
+- SQL Injection Prevention: Parameterized queries throughout
 
 ---
 
-## 🏗️ Architecture
+
+## Architecture
 
 ```
 ┌─────────────┐
@@ -70,7 +71,8 @@
 
 ---
 
-## 🛠️ Tech Stack
+
+## Tech Stack
 
 | Category | Technologies |
 |----------|-------------|
@@ -128,7 +130,8 @@ Access the dashboard at `http://localhost:8501`
 
 ---
 
-## 📖 Usage Guide
+
+## Usage Guide
 
 ### Web Dashboard (Recommended)
 
@@ -224,7 +227,8 @@ pytest --cov=. --cov-report=html
 
 ---
 
-## 📊 Methodology
+
+## Methodology
 The system utilizes **Co-occurrence Networks** to map relationships. If "Entity A" and "Entity B" appear in the same intelligence report, a weighted edge is created between them. Heavier edges indicate a stronger relationship (frequent collaboration or conflict).
 
 ### Entity Types
@@ -240,7 +244,8 @@ The system utilizes **Co-occurrence Networks** to map relationships. If "Entity 
 
 ---
 
-## 🎯 Use Cases
+
+## Use Cases
 
 - **Government/Military**: Threat assessment and situational awareness
 - **Corporate Risk**: Supply chain and market intelligence
@@ -250,7 +255,8 @@ The system utilizes **Co-occurrence Networks** to map relationships. If "Entity 
 
 ---
 
-## 🔐 Security Considerations
+
+## Security Considerations
 
 - Store API keys in `.env` files (never commit)
 - Input validation prevents path traversal attacks
@@ -260,7 +266,8 @@ The system utilizes **Co-occurrence Networks** to map relationships. If "Entity 
 
 ---
 
-## 🤝 Contributing
+
+## Contributing
 
 Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
 
@@ -272,13 +279,15 @@ Contributions are welcome! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for gui
 
 ---
 
-## 📝 License
+
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+
+## Acknowledgments
 
 - **NewsAPI** for providing news data
 - **spaCy** for NLP capabilities
@@ -288,7 +297,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📧 Contact
+
+## Contact
 
 **Your Name** - [your.email@example.com](mailto:nomoore@willamette.edu)
 

@@ -8,19 +8,13 @@ import os
 import sys
 import traceback
 import uuid
-import hashlib
+import sys
 from dotenv import load_dotenv
 
-# Add error logging that prints to console (visible in Streamlit Cloud logs)
-print("=" * 80)
-print("DASHBOARD STARTUP - Beginning imports and initialization")
-print(f"Python version: {sys.version}")
-print(f"Streamlit version: {st.__version__}")
-print("=" * 80)
+
 
 # Load environment variables (safe at module level)
 load_dotenv()
-print("✓ Environment variables loaded")
 
 # --- PREDEFINED REGIONS ---
 REGIONS = {
@@ -310,8 +304,6 @@ def cleanup_old_graphs(max_age_hours=24):
 
 # --- DASHBOARD LAYOUT ---
 def main():
-    print("MAIN: Starting main() function")
-    
     # Initialize session state for clean user sessions
     if 'initialized' not in st.session_state:
         st.session_state.initialized = True
@@ -323,35 +315,48 @@ def main():
         st.session_state.session_id = str(uuid.uuid4())
         # Reset connections for this session (network graph starts empty)
         st.session_state.connections = []
-        print(f"SESSION: New user session initialized with ID {st.session_state.session_id}")
+        # Session initialized
     
     try:
         # Set page config (must be first Streamlit command)
-        print("MAIN: Setting page config")
         st.set_page_config(page_title="Conflict Monitor", layout="wide")
-        
         # Initialize database on first run
-        print("MAIN: Initializing database")
         init_database()
-        
         # Clean up old graph files (run once per app restart)
         if not hasattr(st.session_state, '_cleanup_done'):
             cleanup_old_graphs(max_age_hours=24)
             st.session_state._cleanup_done = True
-        
-        print("MAIN: Rendering UI")
-        st.title("🕵️ Automated Conflict Intelligence Monitor")
-        st.markdown("### Real-time OSINT & Network Analysis Dashboard")
+        st.title("Automated Conflict Intelligence Monitor")
+        st.markdown("Real-time OSINT & Network Analysis Dashboard")
         
         # Welcome message for new users (dismissible)
         if st.session_state.get('show_welcome', False):
-            st.info("👋 **Welcome!** Each user gets an independent view. Use filters to explore intelligence data, or reset anytime with the 🔄 button.")
-            if st.button("Got it! ✓"):
+            st.info("Welcome! Each user gets an independent view. Use filters to explore intelligence data, or reset anytime with the reset button.")
+            if st.button("Got it!"):
                 st.session_state.show_welcome = False
                 st.rerun()
+
+        # --- SESSION-BASED CONNECT DATA ---
+        st.markdown("Session-Specific Data Connection (No Login Required)")
+
+        if 'user_data' not in st.session_state:
+            st.session_state['user_data'] = None
+
+        if st.button("Connect Data"):
+            # Simulate loading data unique to this session
+            st.session_state['user_data'] = f"Data for session {st.session_state.session_id}"
+
+        if st.session_state['user_data']:
+            st.success("Your Data:")
+            st.write(st.session_state['user_data'])
+        else:
+            st.info("No data connected yet. Click the button above.")
+
+        if st.button("Reset Session Data"):
+            st.session_state['user_data'] = None
         
         # === SIDEBAR: INTELLIGENCE COLLECTION ===
-        st.sidebar.header("🔍 Intelligence Collection")
+        st.sidebar.header("Intelligence Collection")
         
         # Check API key availability
         api_key_available = False
@@ -361,8 +366,8 @@ def main():
             api_key_available = bool(os.getenv("API_KEY"))
         
         if not api_key_available:
-            st.sidebar.warning("⚠️ API Key not configured. Data collection disabled.")
-            st.sidebar.info("💡 **Viewing Mode**: Browse existing intelligence data below.")
+            st.sidebar.warning("API Key not configured. Data collection disabled.")
+            st.sidebar.info("Viewing Mode: Browse existing intelligence data below.")
         
         # Region selector
         selected_region = st.sidebar.selectbox(
@@ -372,7 +377,7 @@ def main():
         )
         
         # Custom search query (advanced users)
-        use_custom = st.sidebar.checkbox("⚙️ Use Custom Query", value=False)
+        use_custom = st.sidebar.checkbox("Use Custom Query", value=False)
         if use_custom:
             custom_query = st.sidebar.text_input("Custom Search Terms", value=REGIONS[selected_region])
             max_articles = st.sidebar.slider("Max Articles to Analyze", 10, 50, 20)
@@ -381,7 +386,7 @@ def main():
             max_articles = 20
         
         # Collect Intelligence Button
-        if st.sidebar.button("🚀 Collect Fresh Intelligence", type="primary", disabled=not api_key_available):
+        if st.sidebar.button("Collect Fresh Intelligence", type="primary", disabled=not api_key_available):
             success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles)
             if success:
                 st.sidebar.success(message)
@@ -392,12 +397,12 @@ def main():
             st.sidebar.divider()
         
         # === SIDEBAR: DATA FILTERING ===
-        st.sidebar.header("📊 Data Filters")
+        st.sidebar.header("Data Filters")
         
         # Reset button for clean view
         col1, col2 = st.sidebar.columns([3, 1])
         with col2:
-            if st.button("🔄", help="Reset all filters to default"):
+            if st.button("Reset", help="Reset all filters to default"):
                 st.session_state.region_filter = "All Regions"
                 st.session_state.entity_type = "All Types"
                 st.session_state.search_term = ""
@@ -449,29 +454,29 @@ def main():
             return
         
         # === SIDEBAR: STATISTICS ===
-        st.sidebar.header("📈 Intel Summary")
+        st.sidebar.header("Intel Summary")
         st.sidebar.metric("Total Articles", len(df_articles))
         st.sidebar.metric("Unique Entities", df_entities['name'].nunique() if not df_entities.empty else 0)
         st.sidebar.metric("Avg Sentiment", f"{df_articles['sentiment'].mean():.2f}" if 'sentiment' in df_articles.columns else "N/A")
         
         # Regional distribution
         if 'region' in df_articles.columns:
-            st.sidebar.subheader("📍 Regional Coverage")
+            st.sidebar.subheader("Regional Coverage")
             region_counts = df_articles['region'].value_counts()
             st.sidebar.bar_chart(region_counts)
         
         st.sidebar.divider()
         
         # === SIDEBAR: DANGER ZONE ===
-        with st.sidebar.expander("⚠️ Danger Zone", expanded=False):
-            st.warning("**Clear All Data**: This will permanently delete all collected intelligence from the database.")
+        with st.sidebar.expander("Danger Zone", expanded=False):
+            st.warning("Clear All Data: This will permanently delete all collected intelligence from the database.")
             
             # Confirmation checkbox
             confirm_clear = st.checkbox("I understand this cannot be undone", key="confirm_clear")
             
             # Clear button (only enabled if confirmed)
             if st.button(
-                "🗑️ Clear All Data", 
+                "Clear All Data", 
                 type="secondary",
                 disabled=not confirm_clear,
                 help="Delete all articles and entities from database"
@@ -488,15 +493,15 @@ def main():
                     st.error(message)
         
         # === MAIN AREA: TABS ===
-        tab1, tab2, tab3, tab4 = st.tabs(["🔗 Network Graph", "📊 Analytics", "📄 Articles", "ℹ️ About"])
+        tab1, tab2, tab3, tab4 = st.tabs(["Network Graph", "Analytics", "Articles", "About"])
         
         # TAB 1: NETWORK GRAPH
         with tab1:
-            st.subheader("🔗 Entity Relationship Network")
+            st.subheader("Entity Relationship Network")
             
             col1, col2 = st.columns([3, 1])
             with col1:
-                st.info("**Legend:** 🔴 Countries/Locations  🔵 People  🟢 Organizations  🟡 Nationalities")
+                st.info("Legend: Red = Countries/Locations, Blue = People, Green = Organizations, Yellow = Nationalities")
             with col2:
                 if not df_entities.empty:
                     st.metric("Connections", len(df_entities))
@@ -516,30 +521,30 @@ def main():
         
         # TAB 2: ANALYTICS
         with tab2:
-            st.subheader("📊 Intelligence Analytics")
+            st.subheader("Intelligence Analytics")
             
             if not df_entities.empty:
                 col1, col2 = st.columns(2)
                 
                 with col1:
-                    st.markdown("#### Top 15 Mentioned Entities")
+                    st.markdown("Top 15 Mentioned Entities")
                     top_entities = df_entities['name'].value_counts().head(15)
                     st.bar_chart(top_entities)
                 
                 with col2:
-                    st.markdown("#### Entity Type Distribution")
+                    st.markdown("Entity Type Distribution")
                     entity_type_dist = df_entities['type'].value_counts()
                     st.bar_chart(entity_type_dist)
                 
                 # Sentiment over time
                 if 'published_at' in df_articles.columns:
-                    st.markdown("#### Sentiment Trend Over Time")
+                    st.markdown("Sentiment Trend Over Time")
                     df_articles['published_date'] = pd.to_datetime(df_articles['published_at']).dt.date
                     sentiment_trend = df_articles.groupby('published_date')['sentiment'].mean()
                     st.line_chart(sentiment_trend)
                 
                 # Top entity pairs (co-occurrences)
-                st.markdown("#### Top Entity Connections")
+                st.markdown("Top Entity Connections")
                 entity_pairs = []
                 article_groups = df_entities.groupby('article_id')['name'].apply(list)
                 for entities in article_groups:
@@ -559,11 +564,11 @@ def main():
         
         # TAB 3: ARTICLES TABLE
         with tab3:
-            st.subheader("📄 Intelligence Reports")
+            st.subheader("Intelligence Reports")
             
             # Search functionality with session state
             search_term = st.text_input(
-                "🔍 Search articles by title", 
+                "Search articles by title", 
                 value=st.session_state.search_term,
                 key="article_search"
             )
@@ -589,7 +594,7 @@ def main():
             )
             
             # Export option
-            if st.button("📥 Export to CSV"):
+            if st.button("Export to CSV"):
                 csv = display_df[cols_to_show].to_csv(index=False)
                 st.download_button(
                     label="Download CSV",
@@ -599,86 +604,93 @@ def main():
                 )
         
         # TAB 4: ABOUT
-        with tab4:
-            st.subheader("ℹ️ About This System")
-            st.markdown("""
-            ### 🎯 Mission
-            This automated OSINT (Open Source Intelligence) system monitors global conflicts by:
-            - 📡 **Collecting** real-time news from multiple sources
-            - 🧠 **Analyzing** text with NLP (Named Entity Recognition & Sentiment Analysis)
-            - 🗄️ **Archiving** structured intelligence in a relational database
-            - 🔗 **Visualizing** entity relationships to reveal hidden patterns
+                with tab4:
+                        st.subheader("About This System")
+                        st.markdown("""
+                        Mission
+                        This automated OSINT (Open Source Intelligence) system monitors global conflicts by:
+                        - Collecting real-time news from multiple sources
+                        - Analyzing text with NLP (Named Entity Recognition & Sentiment Analysis)
+                        - Archiving structured intelligence in a relational database
+                        - Visualizing entity relationships to reveal hidden patterns
             
-            ### 🛠️ Technology Stack
-            - **NLP**: spaCy (Entity Recognition), VADER (Sentiment)
-            - **Data**: NewsAPI, SQLite, pandas
-            - **Visualization**: NetworkX, PyVis, Streamlit
-            - **Security**: Environment variables, input sanitization
+                        Technology Stack
+                        - NLP: spaCy (Entity Recognition), VADER (Sentiment)
+                        - Data: NewsAPI, SQLite, pandas
+                        - Visualization: NetworkX, PyVis, Streamlit
+                        - Security: Environment variables, input sanitization
             
-            ### 📚 Entity Types
-            - **GPE**: Geopolitical Entities (countries, cities)
-            - **ORG**: Organizations (militaries, governments, NGOs)
-            - **PERSON**: Key individuals (leaders, officials)
-            - **NORP**: Nationalities or religious/political groups
+                        Entity Types
+                        - GPE: Geopolitical Entities (countries, cities)
+                        - ORG: Organizations (militaries, governments, NGOs)
+                        - PERSON: Key individuals (leaders, officials)
+                        - NORP: Nationalities or religious/political groups
             
-            ### 🚀 How to Use
+                        How to Use
+                        For Public Users (Viewing Mode):
+                        1. Browse pre-collected intelligence data from various regions
+                        2. Explore the network graph to see entity relationships
+                        3. Use filters to focus on specific regions or entity types
+                        4. Export data to CSV for further analysis
             
-            **For Public Users (Viewing Mode):**
-            1. Browse pre-collected intelligence data from various regions
-            2. Explore the network graph to see entity relationships
-            3. Use filters to focus on specific regions or entity types
-            4. Export data to CSV for further analysis
+                        For Dashboard Administrators:
+                        1. Configure API_KEY in Streamlit Cloud secrets
+                        2. Select a region and click "Collect Fresh Intelligence"
+                        3. New data is automatically collected, analyzed, and archived
+                        4. All users can then view the updated intelligence
             
-            **For Dashboard Administrators:**
-            1. Configure API_KEY in Streamlit Cloud secrets
-            2. Select a region and click "Collect Fresh Intelligence"
-            3. New data is automatically collected, analyzed, and archived
-            4. All users can then view the updated intelligence
+                        Data Collection Access
+                        - API Key Required: Fresh data collection requires a NewsAPI key
+                        - Public Access: All users can view existing data without authentication
+                        - Administrator: Configures API key to enable data collection
             
-            ### 🔐 Data Collection Access
-            - **API Key Required**: Fresh data collection requires a NewsAPI key
-            - **Public Access**: All users can view existing data without authentication
-            - **Administrator**: Configures API key to enable data collection
+                        Limitations
+                        - Data limited to publicly available news sources
+                        - Sentiment analysis may not capture nuance
+                        - Entity extraction depends on mention frequency
+                        - Update frequency limited by API rate limits
             
-            ### ⚠️ Limitations
-            - Data limited to publicly available news sources
-            - Sentiment analysis may not capture nuance
-            - Entity extraction depends on mention frequency
-            - Update frequency limited by API rate limits
+                        Legal & Attribution
+                        - Data Source: News data provided by [NewsAPI.org](https://newsapi.org)
+                        - Usage: Educational and research purposes
+                        - Disclaimer: This tool aggregates publicly available information for analysis.
+                            News content copyright belongs to original publishers.
+                        - License: This software is licensed under MIT License
+                        - No Warranty: Provided "as-is" without guarantees of accuracy or completeness
             
-            ### 📜 Legal & Attribution
-            - **Data Source**: News data provided by [NewsAPI.org](https://newsapi.org)
-            - **Usage**: Educational and research purposes
-            - **Disclaimer**: This tool aggregates publicly available information for analysis.
-              News content copyright belongs to original publishers.
-            - **License**: This software is licensed under MIT License
-            - **No Warranty**: Provided "as-is" without guarantees of accuracy or completeness
-            
-            ### 🔗 Attribution
-            Built with: spaCy • VADER • NetworkX • Streamlit • NewsAPI • SQLite
-            """)
+                        Attribution
+                        Built with: spaCy, VADER, NetworkX, Streamlit, NewsAPI, SQLite
+                        """)
     except Exception as e:
-        print(f"ERROR IN MAIN: {type(e).__name__}: {str(e)}")
         st.error(f"Application Error: {str(e)}")
         traceback.print_exc()
 
 if __name__ == "__main__":
-    print("=" * 80)
-    print("STARTUP: Executing main() function")
-    print("=" * 80)
     try:
         main()
-        print("STARTUP: main() completed successfully")
     except Exception as e:
-        print("=" * 80)
-        print(f"FATAL ERROR IN MAIN: {type(e).__name__}: {str(e)}")
-        print("=" * 80)
-        traceback.print_exc()
-        print("=" * 80)
-        # Try to show error in Streamlit if possible
         try:
             st.error(f"Fatal Error: {str(e)}")
             st.code(traceback.format_exc())
         except:
             pass
         raise
+
+# --- SESSION-BASED CONNECT DATA ---
+st.markdown("### Session-Specific Data Connection (No Login Required)")
+
+if 'user_data' not in st.session_state:
+    st.session_state['user_data'] = None
+
+if st.button("Connect Data"):
+    # Simulate loading data unique to this session
+    st.session_state['user_data'] = f"Data for session {st.session_state.session_id}"
+
+if st.session_state['user_data']:
+    st.success("Your Data:")
+    st.write(st.session_state['user_data'])
+else:
+    st.info("No data connected yet. Click the button above.")
+
+if st.button("Reset Session Data"):
+    st.session_state['user_data'] = None
