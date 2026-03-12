@@ -329,31 +329,7 @@ def main():
         st.title("Automated Conflict Intelligence Monitor")
         st.markdown("Real-time OSINT & Network Analysis Dashboard")
         
-        # Welcome message for new users (dismissible)
-        if st.session_state.get('show_welcome', False):
-            st.info("Welcome! Each user gets an independent view. Use filters to explore intelligence data, or reset anytime with the reset button.")
-            if st.button("Got it!", key="got_it_btn"):
-                st.session_state.show_welcome = False
-                st.rerun()
-
-        # --- SESSION-BASED CONNECT DATA ---
-        st.markdown("Session-Specific Data Connection (No Login Required)")
-
-        if 'user_data' not in st.session_state:
-            st.session_state['user_data'] = None
-
-        if st.button("Connect Data", key="connect_data_btn"):
-            # Simulate loading data unique to this session
-            st.session_state['user_data'] = f"Data for session {st.session_state.session_id}"
-
-        if st.session_state['user_data']:
-            st.success("Your Data:")
-            st.write(st.session_state['user_data'])
-        else:
-            st.info("No data connected yet. Click the button above.")
-
-        if st.button("Reset Session Data", key="reset_session_data_btn"):
-            st.session_state['user_data'] = None
+        # ...existing code...
         
         # === SIDEBAR: INTELLIGENCE COLLECTION ===
         st.sidebar.header("Intelligence Collection")
@@ -678,20 +654,4 @@ if __name__ == "__main__":
         raise
 
 # --- SESSION-BASED CONNECT DATA ---
-st.markdown("### Session-Specific Data Connection (No Login Required)")
-
-if 'user_data' not in st.session_state:
-    st.session_state['user_data'] = None
-
-if st.button("Connect Data", key="connect_data_btn_bottom"):
-    # Simulate loading data unique to this session
-    st.session_state['user_data'] = f"Data for session {st.session_state.session_id}"
-
-if st.session_state['user_data']:
-    st.success("Your Data:")
-    st.write(st.session_state['user_data'])
-else:
-    st.info("No data connected yet. Click the button above.")
-
-if st.button("Reset Session Data", key="reset_session_data_btn_bottom"):
-    st.session_state['user_data'] = None
+    # ...existing code...
