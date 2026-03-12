@@ -332,7 +332,7 @@ def main():
         # Welcome message for new users (dismissible)
         if st.session_state.get('show_welcome', False):
             st.info("Welcome! Each user gets an independent view. Use filters to explore intelligence data, or reset anytime with the reset button.")
-            if st.button("Got it!"):
+            if st.button("Got it!", key="got_it_btn"):
                 st.session_state.show_welcome = False
                 st.rerun()
 
@@ -342,7 +342,7 @@ def main():
         if 'user_data' not in st.session_state:
             st.session_state['user_data'] = None
 
-        if st.button("Connect Data"):
+        if st.button("Connect Data", key="connect_data_btn"):
             # Simulate loading data unique to this session
             st.session_state['user_data'] = f"Data for session {st.session_state.session_id}"
 
@@ -352,7 +352,7 @@ def main():
         else:
             st.info("No data connected yet. Click the button above.")
 
-        if st.button("Reset Session Data"):
+        if st.button("Reset Session Data", key="reset_session_data_btn"):
             st.session_state['user_data'] = None
         
         # === SIDEBAR: INTELLIGENCE COLLECTION ===
@@ -402,7 +402,7 @@ def main():
         # Reset button for clean view
         col1, col2 = st.sidebar.columns([3, 1])
         with col2:
-            if st.button("Reset", help="Reset all filters to default"):
+            if st.button("Reset", help="Reset all filters to default", key="reset_filters_btn"):
                 st.session_state.region_filter = "All Regions"
                 st.session_state.entity_type = "All Types"
                 st.session_state.search_term = ""
@@ -476,10 +476,11 @@ def main():
             
             # Clear button (only enabled if confirmed)
             if st.button(
-                "Clear All Data", 
+                "Clear All Data",
                 type="secondary",
                 disabled=not confirm_clear,
-                help="Delete all articles and entities from database"
+                help="Delete all articles and entities from database",
+                key="clear_all_data_btn"
             ):
                 success, message = clear_database()
                 if success:
@@ -594,7 +595,7 @@ def main():
             )
             
             # Export option
-            if st.button("Export to CSV"):
+            if st.button("Export to CSV", key="export_csv_btn"):
                 csv = display_df[cols_to_show].to_csv(index=False)
                 st.download_button(
                     label="Download CSV",
@@ -682,7 +683,7 @@ st.markdown("### Session-Specific Data Connection (No Login Required)")
 if 'user_data' not in st.session_state:
     st.session_state['user_data'] = None
 
-if st.button("Connect Data"):
+if st.button("Connect Data", key="connect_data_btn_bottom"):
     # Simulate loading data unique to this session
     st.session_state['user_data'] = f"Data for session {st.session_state.session_id}"
 
@@ -692,5 +693,5 @@ if st.session_state['user_data']:
 else:
     st.info("No data connected yet. Click the button above.")
 
-if st.button("Reset Session Data"):
+if st.button("Reset Session Data", key="reset_session_data_btn_bottom"):
     st.session_state['user_data'] = None
