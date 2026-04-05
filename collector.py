@@ -11,28 +11,29 @@ class IntelCollector:
         self.api_key = api_key 
         self.base_url = "https://newsapi.org/v2/everything"
     
-    def fetch_intel(self, topic, days_back=3):
+    def fetch_intel(self, topic, from_date=None, to_date=None):
         """
         Queries the Intelligence Source (NewsAPI) for articles about the topic.
+        Optionally filters by date range (YYYY-MM-DD).
         """
         print(f"[*] Initiating collection for topic: {topic}...")
-        
         params = {
             'q': topic,
             'sortBy': 'relevancy',
             'language': 'en',
             'apiKey': self.api_key,
         }
-        
+        if from_date:
+            params['from'] = from_date
+        if to_date:
+            params['to'] = to_date
         try:
             response = requests.get(self.base_url, params=params)
             response.raise_for_status()
             data = response.json()
-            
             total_results = data.get('totalResults', 0)
             print(f"[+] Collection successful. Found {total_results} intelligence items.")
             return data.get('articles', [])
-            
         except (requests.exceptions.RequestException, Exception) as e:
             print(f"[!] Network Error: {e}")
             return []

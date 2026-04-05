@@ -13,9 +13,15 @@ ENV/
 *.db
 *.sqlite3
 
+
 # Data files
 *.json
 intel_data/
+
+# Environment and secrets
+.env
+*.env
+.env.*
 
 # Generated graph files (user-specific)
 network*.html

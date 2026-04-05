@@ -79,53 +79,40 @@ def get_available_regions():
         return []
 
 # --- INTELLIGENCE COLLECTION PIPELINE ---
-def run_intelligence_pipeline(region_name, search_query, max_articles=20):
+def run_intelligence_pipeline(region_name, search_query, max_articles=20, from_date=None, to_date=None):
     """
     Runs the complete intelligence pipeline: Collect -> Analyze -> Archive
     """
+
     try:
-        # Lazy import to avoid startup crashes
         from collector import IntelCollector
         from analyst import IntelAnalyst
         from archivist import IntelArchivist
-        
-        # Try Streamlit secrets first, then fall back to .env
         API_KEY = None
         try:
             API_KEY = st.secrets.get("API_KEY")
         except:
             API_KEY = os.getenv("API_KEY")
-        
         if not API_KEY:
             return False, "⚠️ API_KEY not configured. Dashboard owner: Add API_KEY to Streamlit Cloud secrets."
-        
-        # Step 1: Collect
         with st.spinner(f"🔍 Collecting intelligence on {region_name}..."):
             collector = IntelCollector(API_KEY)
-            articles = collector.fetch_intel(search_query)
-            
+            articles = collector.fetch_intel(search_query, from_date=from_date, to_date=to_date)
             if not articles:
                 return False, "No articles found"
-            
             collector.save_raw_intel(articles, region_name)
-        
-        # Step 2: Analyze
         with st.spinner(f"🧠 Analyzing {len(articles[:max_articles])} articles with NLP..."):
             analyst = IntelAnalyst()
-            raw_data = articles[:max_articles]  # Limit for performance
+            raw_data = articles[:max_articles]
             structured_intel = analyst.process_batch(raw_data)
             analyst.save_processed_intel(structured_intel)
-        
-        # Step 3: Archive
         with st.spinner(f"💾 Archiving to database..."):
             archivist = IntelArchivist()
             archivist.connect()
             archivist.create_schema()
             archivist.ingest_data("processed_intel.json", region=region_name)
             archivist.close()
-        
         return True, f"Successfully collected and analyzed {len(structured_intel)} articles"
-    
     except Exception as e:
         return False, f"Error: {str(e)}"
 
@@ -361,15 +348,26 @@ def main():
             custom_query = REGIONS[selected_region]
             max_articles = 20
         
+
+        # --- TIME FILTER FOR COLLECTION ---
+        st.sidebar.markdown("**Collection Time Range**")
+        col_from, col_to = st.sidebar.columns(2)
+        with col_from:
+            collect_from = st.date_input("From", key="collect_from")
+        with col_to:
+            collect_to = st.date_input("To", key="collect_to")
+
         # Collect Intelligence Button
         if st.sidebar.button("Collect Fresh Intelligence", type="primary", disabled=not api_key_available):
-            success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles)
+            from_date = str(collect_from) if collect_from else None
+            to_date = str(collect_to) if collect_to else None
+            success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles, from_date, to_date)
             if success:
                 st.sidebar.success(message)
                 st.rerun()
             else:
                 st.sidebar.error(message)
-        
+
             st.sidebar.divider()
         
         # === SIDEBAR: DATA FILTERING ===
@@ -652,6 +650,3 @@ if __name__ == "__main__":
         except:
             pass
         raise
-
-# --- SESSION-BASED CONNECT DATA ---
-    # ...existing code...

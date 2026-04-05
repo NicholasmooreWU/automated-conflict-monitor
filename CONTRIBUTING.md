@@ -2,7 +2,7 @@
 
 First off, thank you for considering contributing to OSINT Conflict Monitor! It's people like you that make this tool better for everyone.
 
-## 📋 Table of Contents
+##  Table of Contents
 
 - [Code of Conduct](#code-of-conduct)
 - [How Can I Contribute?](#how-can-i-contribute)
@@ -11,9 +11,9 @@ First off, thank you for considering contributing to OSINT Conflict Monitor! It'
 - [Coding Standards](#coding-standards)
 - [Testing Guidelines](#testing-guidelines)
 
-## 📜 Code of Conduct
+##  Code of Conduct
 
-This project and everyone participating in it is governed by our commitment to creating a welcoming and inclusive environment. By participating, you are expected to uphold this standard.
+This project and everyone participating in it is governed by a commitment to creating a welcoming and inclusive environment. By participating, you are expected to uphold this standard.
 
 ### Our Standards
 
@@ -22,7 +22,7 @@ This project and everyone participating in it is governed by our commitment to c
 - **Be patient**: Remember that everyone has different experience levels
 - **Be constructive**: Provide helpful feedback and suggestions
 
-## 🤝 How Can I Contribute?
+## How Can I Contribute?
 
 ### Reporting Bugs
 
@@ -71,7 +71,7 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 
 Good pull requests (patches, improvements, new features) are fantastic help. They should remain focused in scope and avoid containing unrelated commits.
 
-## 🛠️ Development Setup
+## Development Setup
 
 ### Prerequisites
 
@@ -114,7 +114,7 @@ Good pull requests (patches, improvements, new features) are fantastic help. The
    echo "API_KEY=your_test_api_key" > .env
    ```
 
-## 🔄 Pull Request Process
+## Pull Request Process
 
 1. **Update documentation** for any changed functionality
 2. **Add tests** for new features or bug fixes
@@ -148,7 +148,7 @@ Describe the tests you ran to verify your changes.
 - [ ] New and existing unit tests pass locally with my changes
 ```
 
-## 📏 Coding Standards
+##  Coding Standards
 
 ### Python Style Guide
 
@@ -209,7 +209,7 @@ Bad examples:
 - asdfasdf
 ```
 
-## 🧪 Testing Guidelines
+##  Testing Guidelines
 
 ### Writing Tests
 
@@ -249,7 +249,7 @@ pytest tests/test_collector.py
 pytest tests/test_collector.py::TestIntelCollector::test_sanitize_filename
 ```
 
-## 🏷️ Issue and PR Labels
+##  Issue and PR Labels
 
 - `bug`: Something isn't working
 - `enhancement`: New feature or request
@@ -258,16 +258,16 @@ pytest tests/test_collector.py::TestIntelCollector::test_sanitize_filename
 - `help wanted`: Extra attention is needed
 - `security`: Security-related issues
 
-## 📞 Questions?
+##  Questions?
 
 - Open an issue with the `question` label
 - Reach out to the maintainers
 
-## 🎉 Recognition
+##  Recognition
 
 Contributors will be recognized in:
 - The repository's README
 - Release notes for their contributions
 - A CONTRIBUTORS.md file (coming soon)
 
-Thank you for contributing to OSINT Conflict Monitor! 🚀
+Thank you for contributing to OSINT Conflict Monitor! 
