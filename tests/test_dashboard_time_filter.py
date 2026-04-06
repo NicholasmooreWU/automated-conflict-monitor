@@ -21,8 +21,13 @@ def test_time_filter_applies_correctly(monkeypatch):
     # Monkeypatch load_data to return our test data
     monkeypatch.setattr('dashboard.load_data', lambda region_filter=None: (df_articles.copy(), df_entities.copy()))
 
-    # Simulate the filter logic as in dashboard.py
-    df_articles, df_entities = load_data()
+    # Import load_data after monkeypatching to ensure patch is effective
+    from dashboard import load_data as patched_load_data
+    df_articles, df_entities = patched_load_data()
+    # Debug output for columns
+    if 'published_at' not in df_articles.columns:
+        print('df_articles columns:', df_articles.columns)
+    assert 'published_at' in df_articles.columns, "Test data must include 'published_at' column"
     df_articles['published_at'] = pd.to_datetime(df_articles['published_at'])
     start_date = datetime(2026, 4, 2).date()
     end_date = datetime(2026, 4, 4).date()
