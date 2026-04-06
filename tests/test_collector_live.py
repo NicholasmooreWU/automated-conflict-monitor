@@ -2,6 +2,7 @@ import os
 import pytest
 from collector import IntelCollector
 
+@pytest.mark.skipif(os.getenv("CI") == "true", reason="Skip live tests in CI")
 def test_fetch_intel_live_middle_east():
     api_key = os.getenv("NEWSAPI_KEY") or os.getenv("API_KEY")
     if not api_key:
