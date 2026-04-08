@@ -55,6 +55,9 @@ def load_data(region_filter=None):
             df_entities = pd.read_sql("SELECT * FROM entities", conn)
         
         conn.close()
+        # Ensure published_at is always datetime if present
+        if 'published_at' in df_articles.columns:
+            df_articles['published_at'] = pd.to_datetime(df_articles['published_at'], errors='coerce')
         return df_articles, df_entities
         
     except Exception as e:
@@ -419,6 +422,14 @@ def main():
         
         st.sidebar.divider()
         
+        # === DATE RANGE LIMITER ===
+        import datetime
+        today = datetime.date.today()
+        one_month_ago = today - datetime.timedelta(days=31)
+        st.sidebar.markdown("**Collection Time Range (max 1 month):**")
+        from_date = st.sidebar.date_input("From", value=one_month_ago, min_value=one_month_ago, max_value=today, key="from_date")
+        to_date = st.sidebar.date_input("To", value=today, min_value=from_date, max_value=today, key="to_date")
+
         # === LOAD DATA ===
         df_articles, df_entities = load_data(region_filter if region_filter != "All Regions" else None)
         
