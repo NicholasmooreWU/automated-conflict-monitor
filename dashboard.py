@@ -127,16 +127,16 @@ def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
     """
     if df_entities.empty:
         return None
-    
+
     # Filter by entity type if specified
     if entity_type_filter and entity_type_filter != "All Types":
         df_entities = df_entities[df_entities['type'] == entity_type_filter]
-    
+
     G = nx.Graph()
-    
+
     # Group entities by article to find connections
     article_groups = df_entities.groupby('article_id')['name'].apply(list)
-    
+
     # Color mapping for entity types
     type_colors = {
         'GPE': '#ff6b6b',      # Red for countries/locations
@@ -144,25 +144,21 @@ def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
         'PERSON': '#45b7d1',   # Blue for people
         'NORP': '#f9ca24'      # Yellow for nationalities
     }
-    
+
     for entities in article_groups:
-        if len(entities) < 2:
-            continue
-            
-        # Create nodes with entity type info
+        # Always create nodes, even if only one entity in article
         for entity in entities:
             if entity not in G.nodes():
-                # Get entity type from dataframe
                 entity_type = df_entities[df_entities['name'] == entity]['type'].iloc[0]
                 color = type_colors.get(entity_type, '#97c2fc')
                 G.add_node(entity, title=f"{entity} ({entity_type})", color=color, entity_type=entity_type)
-            
-        # Create edges
+        # Only create edges if more than one entity
+        if len(entities) < 2:
+            continue
         for i in range(len(entities)):
             for j in range(i + 1, len(entities)):
                 source = entities[i]
                 target = entities[j]
-                
                 if G.has_edge(source, target):
                     G[source][target]['weight'] += 1
                 else:
@@ -174,11 +170,11 @@ def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
     # PyVis Visualization
     net = Network(height="650px", width="100%", bgcolor="#1e1e1e", font_color="white")
     net.from_nx(G)
-    
-    # Enhanced physics options
+
+    # Improved physics options for large graphs
     net.force_atlas_2based(gravity=-50, central_gravity=0.01, spring_length=100, spring_strength=0.08)
     net.show_buttons(filter_=['physics'])
-    
+
     # Generate HTML content directly without saving to file
     # This prevents any cross-user file conflicts
     try:
@@ -187,13 +183,13 @@ def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
         with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.html') as f:
             temp_file = f.name
         net.save_graph(temp_file)
-        
+
         with open(temp_file, 'r', encoding='utf-8') as f:
             html_content = f.read()
-        
+
         # Clean up temp file immediately
         os.unlink(temp_file)
-        
+
         return html_content
     except Exception as e:
         print(f"ERROR generating graph: {e}")
@@ -364,12 +360,19 @@ def main():
         if st.sidebar.button("Collect Fresh Intelligence", type="primary", disabled=not api_key_available):
             from_date = str(collect_from) if collect_from else None
             to_date = str(collect_to) if collect_to else None
-            success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles, from_date, to_date)
-            if success:
-                st.sidebar.success(message)
-                st.rerun()
+            # Check if date range is within the past month
+            import datetime
+            today = datetime.date.today()
+            one_month_ago = today - datetime.timedelta(days=31)
+            if (collect_from and collect_from < one_month_ago) or (collect_to and collect_to > today):
+                st.sidebar.error("⚠️ Please select a date range within the past month. Data collection only supports the last 31 days.")
             else:
-                st.sidebar.error(message)
+                success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles, from_date, to_date)
+                if success:
+                    st.sidebar.success(message)
+                    st.rerun()
+                else:
+                    st.sidebar.error(message)
 
             st.sidebar.divider()
         
@@ -422,35 +425,13 @@ def main():
         
         st.sidebar.divider()
         
-        # === DATE RANGE LIMITER ===
-        import datetime
-        today = datetime.date.today()
-        one_month_ago = today - datetime.timedelta(days=31)
-        st.sidebar.markdown("**Collection Time Range (max 1 month):**")
-        from_date = st.sidebar.date_input("From", value=one_month_ago, min_value=one_month_ago, max_value=today, key="from_date")
-        to_date = st.sidebar.date_input("To", value=today, min_value=from_date, max_value=today, key="to_date")
-
         # === LOAD DATA ===
         df_articles, df_entities = load_data(region_filter if region_filter != "All Regions" else None)
-        
+
         if df_articles.empty:
             st.warning("📭 No intelligence data available. Use the sidebar to collect fresh intelligence!")
             st.info("💡 **Getting Started:** Select a region above and click '🚀 Collect Fresh Intelligence' to begin monitoring.")
             return
-        
-        # === SIDEBAR: STATISTICS ===
-        st.sidebar.header("Intel Summary")
-        st.sidebar.metric("Total Articles", len(df_articles))
-        st.sidebar.metric("Unique Entities", df_entities['name'].nunique() if not df_entities.empty else 0)
-        st.sidebar.metric("Avg Sentiment", f"{df_articles['sentiment'].mean():.2f}" if 'sentiment' in df_articles.columns else "N/A")
-        
-        # Regional distribution
-        if 'region' in df_articles.columns:
-            st.sidebar.subheader("Regional Coverage")
-            region_counts = df_articles['region'].value_counts()
-            st.sidebar.bar_chart(region_counts)
-        
-        st.sidebar.divider()
         
         # === SIDEBAR: DANGER ZONE ===
         with st.sidebar.expander("Danger Zone", expanded=False):
@@ -496,12 +477,14 @@ def main():
                 # Generate graph HTML content directly (no file saving)
                 session_id = st.session_state.get('session_id', None)
                 graph_html_content = create_network_graph(df_entities, entity_type, session_id)
-                
                 if graph_html_content:
                     # Render the graph directly from HTML content
                     components.html(graph_html_content, height=680, scrolling=False)
                 else:
-                    st.warning("No entities to display with current filters.")
+                    if df_entities['name'].nunique() > 0:
+                        st.info("No connections found between entities. Try adjusting your filters or collecting more data.")
+                    else:
+                        st.warning("No entities found in the selected data.")
             else:
                 st.warning("No entities found in the selected data.")
         
