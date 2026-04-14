@@ -78,7 +78,15 @@ class IntelAnalyst:
             norm = re.sub(r'[\.,;:!?"\'\(\)\[\]]', '', norm)
             norm = norm.strip().lower()
             # Singularize simple plurals for ORG/GPE (e.g., Oscars -> Oscar)
-            if label in ("ORG", "GPE") and norm.endswith('s') and len(norm) > 3:
+            # Smarter plural-stripping: only singularize single-word entities not in exceptions
+            plural_exceptions = {"United Nations", "Los Angeles", "United States", "Armed Forces"}
+            if (
+                label in ("ORG", "GPE")
+                and norm.endswith('s')
+                and len(norm) > 3
+                and ' ' not in norm
+                and norm not in plural_exceptions
+            ):
                 norm = norm[:-1]
             # Map to canonical name if in normalization_map
             norm = normalization_map.get(norm, norm.title())
