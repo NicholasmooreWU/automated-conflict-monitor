@@ -104,7 +104,7 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=20, from_d
             if not articles:
                 return False, "No articles found"
             collector.save_raw_intel(articles, region_name)
-        with st.spinner(f"🧠 Analyzing {len(articles[:max_articles])} articles with NLP..."):
+        with st.spinner(f"Analyzing {len(articles[:max_articles])} articles with NLP..."):
             analyst = IntelAnalyst()
             raw_data = articles[:max_articles]
             structured_intel = analyst.process_batch(raw_data)
@@ -429,8 +429,8 @@ def main():
         df_articles, df_entities = load_data(region_filter if region_filter != "All Regions" else None)
 
         if df_articles.empty:
-            st.warning("📭 No intelligence data available. Use the sidebar to collect fresh intelligence!")
-            st.info("💡 **Getting Started:** Select a region above and click '🚀 Collect Fresh Intelligence' to begin monitoring.")
+            st.warning("No intelligence data available. Use the sidebar to collect fresh intelligence!")
+            st.info("**Getting Started:** Select a region above and click 'Collect Fresh Intelligence' to begin monitoring.")
             return
         
         # === SIDEBAR: DANGER ZONE ===
