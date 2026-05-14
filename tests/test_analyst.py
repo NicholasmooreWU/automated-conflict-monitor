@@ -149,8 +149,7 @@ class TestIntelAnalyst:
         mock_doc.ents = []
         analyst.nlp = Mock(return_value=mock_doc)
         
-        result = analyst.process_batch(articles)
-        
+        result = analyst.process_batch(articles, main_keyword="Valid")
         # Only 1 article should be processed
         assert len(result) == 1
         assert result[0]['title'] == 'Valid Article'
