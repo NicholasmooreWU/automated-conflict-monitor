@@ -1,8 +1,34 @@
+# --- RELEVANCE KEYWORDS FOR FILTERING ---
+RELEVANCE_KEYWORDS = {
+    "military", "conflict", "sanctions", "diplomatic",
+    "intelligence", "security", "troops", "naval",
+    "geopolitical", "strategic", "missile", "territorial",
+    "espionage", "alliance", "embargo", "sovereignty"
+}
+
+def is_analytically_relevant(article_text):
+    text_lower = article_text.lower()
+    return any(keyword in text_lower for keyword in RELEVANCE_KEYWORDS)
+
+# --- ENTITY EXTRACTION FILTERS ---
+NOISE_ENTITIES = {"the", "a", "an", "this", "that", "us", "it", "he", "she", "they"}
+MIN_ENTITY_LENGTH = 3
+
 import json
 import os
 import glob
 import spacy
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+# Only keep analytically relevant entity types
+RELEVANT_ENTITY_TYPES = {
+    "GPE",    # Countries, cities, regions
+    "ORG",    # Organizations, agencies, companies
+    "PERSON", # Named individuals
+    "NORP",   # Nationalities, political groups
+    "FAC",    # Facilities - military bases, infrastructure
+    "EVENT"   # Named events
+}
 
 class IntelAnalyst:
     def __init__(self):
@@ -92,17 +118,27 @@ class IntelAnalyst:
             norm = normalization_map.get(norm, norm.title())
             return norm
 
-        # We only care about specific types of entities for Intel
-        target_labels = ["GPE", "ORG", "PERSON", "NORP"]
+
+        # Only keep analytically relevant entity types
+        target_labels = RELEVANT_ENTITY_TYPES
 
         # Collect all PERSON entities for last-name matching
         person_entities = []
+        filtered_entities = []
         for ent in doc.ents:
-            if ent.label_ in target_labels:
-                norm_text = normalize_entity(ent.text, ent.label_)
-                if ent.label_ == "PERSON":
-                    person_entities.append(norm_text)
-                entities.append((norm_text, ent.label_))
+            # Only keep relevant types
+            if ent.label_ not in target_labels:
+                continue
+            # Minimum character length
+            if len(ent.text.strip()) < MIN_ENTITY_LENGTH:
+                continue
+            # Stopword/noise filter (case-insensitive)
+            if ent.text.strip().lower() in NOISE_ENTITIES:
+                continue
+            norm_text = normalize_entity(ent.text, ent.label_)
+            if ent.label_ == "PERSON":
+                person_entities.append(norm_text)
+            filtered_entities.append((norm_text, ent.label_))
 
         # Improved PERSON merging: only merge single-token names to a full name if unambiguous
         if person_entities:
@@ -121,11 +157,11 @@ class IntelAnalyst:
                         return list(full_names)[0]
                 return name
             new_entities = []
-            for ent_text, ent_label in entities:
+            for ent_text, ent_label in filtered_entities:
                 if ent_label == "PERSON":
                     ent_text = get_full_name(ent_text)
                 new_entities.append((ent_text, ent_label))
-            entities = new_entities
+            filtered_entities = new_entities
 
         # Return the structured data
         return {
@@ -133,21 +169,29 @@ class IntelAnalyst:
             "source": article['source']['name'],
             "published_at": article['publishedAt'],
             "sentiment": sentiment_score,
-            "entities": list(set(entities)) # Remove duplicates
+            "entities": list(set(filtered_entities)) # Remove duplicates
         }
 
-    def process_batch(self, articles):
+    def process_batch(self, articles, main_keyword=None):
         processed_data = []
         print(f"[*] Analyzing {len(articles)} articles. This may take a moment...")
-        
-        for article in articles:
+        for idx, article in enumerate(articles):
             # Skip articles specifically removed by the source
             if article['title'] == "[Removed]":
+                print(f"[SKIP] Article {idx}: Title is '[Removed]'.")
                 continue
-                
+            # Content relevance filtering
+            text = f"{article.get('title', '')}. {article.get('description', '')}"
+            # Always include if main keyword is present
+            keyword_ok = False
+            if main_keyword:
+                keyword_ok = main_keyword.lower() in text.lower()
+            if not (keyword_ok or is_analytically_relevant(text)):
+                print(f"[SKIP] Article {idx}: Irrelevant content. Title: {article.get('title', '')}")
+                article['irrelevant'] = True
+                continue
             analysis = self.analyze_article(article)
             processed_data.append(analysis)
-            
         return processed_data
 
     def save_processed_intel(self, data):

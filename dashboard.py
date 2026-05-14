@@ -1,15 +1,221 @@
-import streamlit as st
+st = None
+# --- SOURCE CREDIBILITY TIERS ---
+SOURCE_TIERS = {
+    # Tier 1 - Primary intelligence value
+    "reuters": 1.0,
+    "bbc news": 1.0,
+    "the atlantic": 0.9,
+    "the new yorker": 0.9,
+    "financial times": 1.0,
+    # Tier 2 - Secondary value
+    "business insider": 0.6,
+    "yahoo entertainment": 0.5,
+    "npr": 0.8,
+    # Tier 3 - Minimal analytical value
+    "kotaku": 0.1,
+    "macrumors": 0.1,
+    "hackaday": 0.2,
+    "gizmodo": 0.2
+}
+
+
 import sqlite3
 import pandas as pd
 import networkx as nx
 from pyvis.network import Network
-import streamlit.components.v1 as components
 import os
 import sys
 import traceback
 import uuid
-import sys
+import re
 from dotenv import load_dotenv
+
+
+# --- NEW CHINA-FOCUSED RELEVANCE FILTERING ---
+CHINA_DIRECT_MENTION = [
+    "china", "chinese", "beijing", "shanghai", "xi jinping", "ccp",
+    "prc", "people's republic", "taiwan", "hong kong", "xinjiang",
+    "tibet", "south china sea", "pla ", "politburo", "xinhua",
+    "huawei", "byd", "tiktok", "bytedance", "alibaba", "tencent",
+    "baidu", "dji", "cctv", "global times", "belt and road",
+    "one china", "reunification"
+]
+GEOPOLITICAL_KWS = [
+    "diplomatic", "sanctions", "military", "conflict", "territorial",
+    "sovereignty", "alliance", "strategic", "intelligence", "coercion",
+    "provocation", "deterrence", "embargo", "blockade"
+]
+ECON_TECH_KWS = [
+    "tariff", "trade", "chips", "semiconductor", "export controls",
+    "supply chain", "rare earth", "currency", "gdp", "investment ban",
+    "technology transfer", "dual-use", "ai race", "ev", "clean energy"
+]
+REGIONAL_ACTORS_KWS = [
+    "iran", "taiwan", "philippines", "japan", "india", "russia",
+    "north korea", "south korea", "asean", "pacific", "indo-pacific",
+    "strait of hormuz", "strait of taiwan", "south china sea"
+]
+DOMESTIC_POLICY_KWS = [
+    "censorship", "surveillance", "protest", "crackdown", "propaganda",
+    "disinformation", "state media", "communist party", "politburo",
+    "social credit", "great firewall", "lying flat", "wolf warrior"
+]
+
+SPORTS_PATTERN = [
+    "review bomb", "review-bomb", "review-bombed", "game update",
+    "game patch", "esports", "nba", "nfl", "fifa", "formula 1",
+    "snooker", "dlc release", "game studio", "video game"
+]
+CONSUMER_PRODUCT_PATTERN = [
+    "motorcycle review", "best headphones", "buying guide",
+    "hands on review", "unboxing", "specs leaked",
+    "hits the roads", "hits the road", "looks kind of like",
+    "looks like a", "new ioniq", "new iphone", "new pixel",
+    "review: ", "first ride", "first drive review",
+    "finally hits", "bling 450", "rc finally"
+]
+LOW_CREDIBILITY_SOURCES = [
+    "kotaku", "rideapart.com", "guessingheadlines.com",
+    "phonearena", "gsmarena", "9to5mac", "9to5google",
+    "droid-life", "xda-developers", "phandroid",
+    "notebookcheck", "liliputing"
+]
+HEALTH_UNRELATED_PATTERN = [
+    "shingles", "vaccine side effects", "diet tips", "workout",
+    "skin care"
+]
+
+
+def safe_str(val):
+    return val if isinstance(val, str) else ""
+
+def china_direct_mention(title, body):
+    title_l = safe_str(title).lower()
+    body_l = safe_str(body).lower()[:300]
+    for kw in CHINA_DIRECT_MENTION:
+        if kw in title_l or kw in body_l:
+            return True
+    return False
+
+
+
+def sports_auto_reject(title, body):
+    title_l = safe_str(title).lower()
+    body_l = safe_str(body).lower()
+    for kw in SPORTS_PATTERN:
+        if kw == "snooker":
+            if "snooker" in title_l:
+                if not any(
+                    cdm in body_l[:100] or cdm in title_l
+                    for cdm in CHINA_DIRECT_MENTION
+                ):
+                    return True
+        else:
+            # Check both title AND beginning of body for sports signals
+            if kw in title_l or kw in body_l[:150]:
+                # Only reject if no China direct mention in TITLE specifically
+                # (body mention alone is not enough to save a sports article)
+                if not any(cdm in title_l for cdm in CHINA_DIRECT_MENTION):
+                    return True
+    return False
+
+
+
+def consumer_auto_reject(title, body=""):
+    title_l = safe_str(title).lower()
+    body_l = safe_str(body).lower()[:200]
+    for kw in CONSUMER_PRODUCT_PATTERN:
+        if kw in title_l or kw in body_l:
+            # Only reject if no China mention in the title itself
+            if not any(cdm in title_l for cdm in CHINA_DIRECT_MENTION):
+                return True
+    return False
+
+def source_auto_reject(source, title, body):
+    """Reject articles from low-credibility sources unless
+    China is explicitly mentioned in the title."""
+    source_l = safe_str(source).lower().strip()
+    title_l = safe_str(title).lower()
+    if source_l in LOW_CREDIBILITY_SOURCES:
+        # Only pass if China is directly mentioned in the TITLE
+        # Body mention alone is not enough for low-credibility sources
+        if not any(cdm in title_l for cdm in CHINA_DIRECT_MENTION):
+            return True
+    return False
+
+
+def health_auto_reject(title, body):
+    title_l = safe_str(title).lower()
+    for kw in HEALTH_UNRELATED_PATTERN:
+        if kw in title_l:
+            # Only reject if no China direct mention
+            if not china_direct_mention(title, body):
+                return True
+    return False
+
+
+def secondary_scoring(title, body):
+    text = f"{safe_str(title)} {safe_str(body)}".lower()
+    score = 0.0
+    # Each category: up to 2 hits counted
+    for kws, weight in [
+        (GEOPOLITICAL_KWS, 0.2),
+        (ECON_TECH_KWS, 0.2),
+        (REGIONAL_ACTORS_KWS, 0.15),
+        (DOMESTIC_POLICY_KWS, 0.1)
+    ]:
+        hits = 0
+        for kw in kws:
+            if kw in text:
+                hits += 1
+            if hits >= 2:
+                break
+        score += min(hits, 2) * weight
+    return min(score, 1.0)
+
+
+
+# Auto-reject patterns must be checked FIRST, before auto-pass.
+
+def relevance_filter_article(title, body, source=""):
+    # Step 1: Auto-reject — always runs before auto-pass
+    if sports_auto_reject(title, body):
+        return 0.0, "auto_reject_sports"
+    if consumer_auto_reject(title, body):
+        return 0.0, "auto_reject_consumer"
+    if health_auto_reject(title, body):
+        return 0.0, "auto_reject_health"
+    if source_auto_reject(source, title, body):
+        return 0.0, "auto_reject_low_credibility_source"
+    # Step 2: China direct mention (auto-pass)
+    if china_direct_mention(title, body):
+        return 1.0, "china_direct_mention"
+    # Step 3: Secondary scoring
+    score = secondary_scoring(title, body)
+    if score >= 0.10:
+        return score, "scored_pass"
+    return score, "failed_secondary_scoring"
+
+def ensure_filtered_articles_table(conn):
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS filtered_articles (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            title TEXT,
+            body TEXT,
+            relevance_score REAL,
+            filter_reason TEXT
+        )
+    """)
+    conn.commit()
+
+
+def write_article_with_filter(conn, article, relevance_score, filter_reason):
+    ensure_filtered_articles_table(conn)
+    conn.execute(
+        "INSERT INTO filtered_articles (title, body, relevance_score, filter_reason) VALUES (?, ?, ?, ?)",
+        (article.get('title', ''), article.get('description', ''), relevance_score, filter_reason)
+    )
+    conn.commit()
 
 
 
@@ -82,7 +288,7 @@ def get_available_regions():
         return []
 
 # --- INTELLIGENCE COLLECTION PIPELINE ---
-def run_intelligence_pipeline(region_name, search_query, max_articles=20, from_date=None, to_date=None):
+def run_intelligence_pipeline(region_name, search_query, max_articles=None, from_date=None, to_date=None):
     """
     Runs the complete intelligence pipeline: Collect -> Analyze -> Archive
     """
@@ -98,16 +304,44 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=20, from_d
             API_KEY = os.getenv("API_KEY")
         if not API_KEY:
             return False, "⚠️ API_KEY not configured. Dashboard owner: Add API_KEY to Streamlit Cloud secrets."
-        with st.spinner(f"🔍 Collecting intelligence on {region_name}..."):
+        with st.spinner(f"Collecting intelligence on {region_name}..."):
             collector = IntelCollector(API_KEY)
             articles = collector.fetch_intel(search_query, from_date=from_date, to_date=to_date)
             if not articles:
                 return False, "No articles found"
             collector.save_raw_intel(articles, region_name)
-        with st.spinner(f"Analyzing {len(articles[:max_articles])} articles with NLP..."):
+        # --- RELEVANCE FILTERING (NEW LOGIC) ---
+        filtered_articles = []
+        relevant_articles = []
+        for art in articles:
+            title = art.get('title', '')
+            body = art.get('description', '')
+            source = art.get('source', {})
+            if isinstance(source, dict):
+                source = source.get('name', '')
+            score, reason = relevance_filter_article(title, body, source)
+            art['relevance_score'] = score
+            art['filter_reason'] = reason
+            if reason in ["china_direct_mention", "scored_pass"]:
+                relevant_articles.append(art)
+            else:
+                filtered_articles.append(art)
+        # Write filtered articles to DB
+        conn = sqlite3.connect("intel_graph.db")
+        ensure_filtered_articles_table(conn)
+        conn.execute("DELETE FROM filtered_articles")
+        for art in filtered_articles:
+            write_article_with_filter(conn, art, art['relevance_score'], art['filter_reason'])
+        conn.commit()
+        conn.close()
+        # Only process relevant articles
+        with st.spinner(f"Analyzing {len(relevant_articles)} relevant articles with NLP..."):
             analyst = IntelAnalyst()
-            raw_data = articles[:max_articles]
-            structured_intel = analyst.process_batch(raw_data)
+            if max_articles is None:
+                raw_data = relevant_articles
+            else:
+                raw_data = relevant_articles[:max_articles]
+            structured_intel = analyst.process_batch(raw_data, main_keyword=search_query)
             analyst.save_processed_intel(structured_intel)
         with st.spinner(f"💾 Archiving to database..."):
             archivist = IntelArchivist()
@@ -115,9 +349,60 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=20, from_d
             archivist.create_schema()
             archivist.ingest_data("processed_intel.json", region=region_name)
             archivist.close()
-        return True, f"Successfully collected and analyzed {len(structured_intel)} articles"
+
+        return True, f"Successfully collected and analyzed {len(structured_intel)} articles (filtered {len(filtered_articles)} by new logic)"
     except Exception as e:
         return False, f"Error: {str(e)}"
+
+# --- REPROCESS ALL ARTICLES IN DB WITH NEW FILTER ---
+def reprocess_all_articles():
+    conn = sqlite3.connect("intel_graph.db")
+    ensure_filtered_articles_table(conn)
+    conn.execute("DELETE FROM filtered_articles")
+    df = pd.read_sql_query("SELECT * FROM articles", conn)
+    pass_count = 0
+    auto_pass = 0
+    scored_pass = 0
+    fail_count = 0
+    reject_sports = 0
+    reject_consumer = 0
+    reject_health = 0
+    fail_secondary = 0
+    for _, row in df.iterrows():
+        title = row.get('title', '')
+        body = row.get('summary', '') or ''
+        source = row.get('source', '')
+        score, reason = relevance_filter_article(title, body, source)
+        if reason in ["china_direct_mention", "scored_pass"]:
+            pass_count += 1
+            if reason == "china_direct_mention":
+                auto_pass += 1
+            else:
+                scored_pass += 1
+        else:
+            fail_count += 1
+            if reason == "auto_reject_sports":
+                reject_sports += 1
+            elif reason == "auto_reject_consumer":
+                reject_consumer += 1
+            elif reason == "auto_reject_health":
+                reject_health += 1
+            elif reason == "failed_secondary_scoring":
+                fail_secondary += 1
+            write_article_with_filter(conn, row, score, reason)
+    conn.commit()
+    conn.close()
+    return {
+        "total": len(df),
+        "pass_count": pass_count,
+        "auto_pass": auto_pass,
+        "scored_pass": scored_pass,
+        "fail_count": fail_count,
+        "reject_sports": reject_sports,
+        "reject_consumer": reject_consumer,
+        "reject_health": reject_health,
+        "fail_secondary": fail_secondary
+    }
 
 # --- GRAPH BUILDER ---
 def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
@@ -134,6 +419,13 @@ def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
 
     G = nx.Graph()
 
+    # Need article_id -> source mapping for weighting
+    # Load articles table for source info
+    conn = sqlite3.connect("intel_graph.db")
+    df_articles = pd.read_sql("SELECT id, source FROM articles", conn)
+    conn.close()
+    article_source_map = df_articles.set_index('id')['source'].to_dict()
+
     # Group entities by article to find connections
     article_groups = df_entities.groupby('article_id')['name'].apply(list)
 
@@ -145,7 +437,10 @@ def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
         'NORP': '#f9ca24'      # Yellow for nationalities
     }
 
-    for entities in article_groups:
+    for article_id, entities in article_groups.items():
+        # Get source for this article
+        source_name = article_source_map.get(article_id, "unknown").lower()
+        weight = SOURCE_TIERS.get(source_name, 0.5)  # Default to 0.5 if unknown
         # Always create nodes, even if only one entity in article
         for entity in entities:
             if entity not in G.nodes():
@@ -160,9 +455,9 @@ def create_network_graph(df_entities, entity_type_filter=None, session_id=None):
                 source = entities[i]
                 target = entities[j]
                 if G.has_edge(source, target):
-                    G[source][target]['weight'] += 1
+                    G[source][target]['weight'] += weight
                 else:
-                    G.add_edge(source, target, weight=1)
+                    G.add_edge(source, target, weight=weight)
 
     if len(G.nodes()) == 0:
         return None
@@ -290,6 +585,9 @@ def cleanup_old_graphs(max_age_hours=24):
 
 # --- DASHBOARD LAYOUT ---
 def main():
+    global st
+    import streamlit as st
+    import streamlit.components.v1 as components
     # Initialize session state for clean user sessions
     if 'initialized' not in st.session_state:
         st.session_state.initialized = True
@@ -302,7 +600,6 @@ def main():
         # Reset connections for this session (network graph starts empty)
         st.session_state.connections = []
         # Session initialized
-    
     try:
         # Set page config (must be first Streamlit command)
         st.set_page_config(page_title="Conflict Monitor", layout="wide")
@@ -331,23 +628,11 @@ def main():
             st.sidebar.warning("API Key not configured. Data collection disabled.")
             st.sidebar.info("Viewing Mode: Browse existing intelligence data below.")
         
-        # Region selector
-        selected_region = st.sidebar.selectbox(
-            "Select Region to Monitor",
-            options=list(REGIONS.keys()),
-            index=0
-        )
-        
-        # Custom search query (advanced users)
-        use_custom = st.sidebar.checkbox("Use Custom Query", value=False)
-        if use_custom:
-            custom_query = st.sidebar.text_input("Custom Search Terms", value=REGIONS[selected_region])
-            max_articles = st.sidebar.slider("Max Articles to Analyze", 10, 50, 20)
-        else:
-            custom_query = REGIONS[selected_region]
-            max_articles = 20
-        
 
+        # --- KEYWORD SEARCH & COLLECTION ---
+        st.sidebar.markdown("**Keyword Search**")
+        keyword_query = st.sidebar.text_input("Enter keyword(s) (e.g. 'China', 'Ukraine')", value="China", key="keyword_search")
+        
         # --- TIME FILTER FOR COLLECTION ---
         st.sidebar.markdown("**Collection Time Range**")
         col_from, col_to = st.sidebar.columns(2)
@@ -367,7 +652,10 @@ def main():
             if (collect_from and collect_from < one_month_ago) or (collect_to and collect_to > today):
                 st.sidebar.error("⚠️ Please select a date range within the past month. Data collection only supports the last 31 days.")
             else:
-                success, message = run_intelligence_pipeline(selected_region, custom_query, max_articles, from_date, to_date)
+                # Use keyword_query for search, region for tagging only
+                region_tag = keyword_query.strip().title() if keyword_query.strip() else "Unknown"
+                # Pass None for max_articles to analyze all
+                success, message = run_intelligence_pipeline(region_tag, keyword_query, None, from_date, to_date)
                 if success:
                     st.sidebar.success(message)
                     st.rerun()
@@ -378,7 +666,8 @@ def main():
         
         # === SIDEBAR: DATA FILTERING ===
         st.sidebar.header("Data Filters")
-        
+        # Toggle for filtered articles
+        show_filtered = st.sidebar.checkbox("Show filtered articles")
         # Reset button for clean view
         col1, col2 = st.sidebar.columns([3, 1])
         with col2:
@@ -389,16 +678,13 @@ def main():
                 st.rerun()
         with col1:
             st.markdown("**View Options**")
-        
         # Get available regions from database
         available_regions = get_available_regions()
-        
         if available_regions:
             # Use session state to persist selection
             default_index = 0
             if st.session_state.region_filter in available_regions:
                 default_index = (["All Regions"] + available_regions).index(st.session_state.region_filter)
-            
             region_filter = st.sidebar.selectbox(
                 "View Data From:",
                 options=["All Regions"] + available_regions,
@@ -409,11 +695,9 @@ def main():
         else:
             region_filter = None
             st.sidebar.warning("No data in database. Collect intelligence first!")
-        
         # Entity type filter with session state
         entity_type_options = ["All Types", "GPE", "ORG", "PERSON", "NORP"]
         entity_default_index = entity_type_options.index(st.session_state.entity_type) if st.session_state.entity_type in entity_type_options else 0
-        
         entity_type = st.sidebar.selectbox(
             "Filter Entity Type:",
             options=entity_type_options,
@@ -422,11 +706,46 @@ def main():
             key="entity_select"
         )
         st.session_state.entity_type = entity_type
-        
         st.sidebar.divider()
         
         # === LOAD DATA ===
-        df_articles, df_entities = load_data(region_filter if region_filter != "All Regions" else None)
+        # If a keyword is set, filter articles/entities by keyword in title, description, or region
+        def filter_by_keyword(df, keyword):
+            if df.empty or not keyword:
+                return df
+            keyword_lower = keyword.lower()
+            # Ensure columns are string type before .str operations
+            title_col = df['title'].astype(str).str.lower()
+            desc_col = df['description'].astype(str).str.lower() if 'description' in df.columns else pd.Series([""]*len(df))
+            region_col = df['region'].astype(str).str.lower() if 'region' in df.columns else pd.Series([""]*len(df))
+            mask = (
+                title_col.str.contains(keyword_lower, na=False)
+                | desc_col.str.contains(keyword_lower, na=False)
+                | region_col.str.contains(keyword_lower, na=False)
+            )
+            return df[mask]
+
+        df_articles, df_entities = load_data(None)  # Load all data
+        keyword = st.session_state.get('keyword_search', '').strip()
+        if keyword:
+            df_articles = filter_by_keyword(df_articles, keyword)
+            if not df_articles.empty:
+                article_ids = df_articles['id'].tolist()
+                df_entities = df_entities[df_entities['article_id'].isin(article_ids)]
+            else:
+                df_entities = pd.DataFrame()
+
+        # --- SHOW FILTERED ARTICLES IF TOGGLED ---
+        if show_filtered:
+            conn = sqlite3.connect("intel_graph.db")
+            try:
+                filtered_df = pd.read_sql_query("SELECT * FROM filtered_articles", conn)
+                st.info("Filtered Articles (Low Relevance):")
+                st.dataframe(filtered_df, width='stretch', height=400)
+            except Exception as e:
+                st.warning(f"No filtered articles found or error: {e}")
+            conn.close()
+            st.stop()
 
         if df_articles.empty:
             st.warning("No intelligence data available. Use the sidebar to collect fresh intelligence!")
@@ -568,7 +887,7 @@ def main():
                 st.download_button(
                     label="Download CSV",
                     data=csv,
-                    file_name=f"intel_report_{selected_region}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
+                    file_name=f"intel_report_{selected_region}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv", # type: ignore
                     mime="text/csv"
                 )
         

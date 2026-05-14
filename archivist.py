@@ -60,10 +60,11 @@ class IntelArchivist:
         count_new = 0
         print(f"[*] Archiving {len(data)} items into SQL...")
 
-        for item in data:
+        for idx, item in enumerate(data):
             try:
                 # Validate data types before insertion
                 if not isinstance(item.get('sentiment'), (int, float)):
+                    print(f"[SKIP] Article {idx}: Invalid sentiment value: {item.get('sentiment')}")
                     raise ValueError(f"Invalid sentiment value: {item.get('sentiment')}")
                 
                 # 1. Insert Article
@@ -75,6 +76,7 @@ class IntelArchivist:
                 
                 # If the article was skipped (duplicate), don't add entities
                 if self.cursor.rowcount == 0:
+                    print(f"[SKIP] Article {idx}: Duplicate or already exists. Title: {item['title']}")
                     continue
                 
                 # Get the ID of the article we just created
@@ -89,7 +91,7 @@ class IntelArchivist:
                     ''', (article_id, ent_name, ent_type))
 
             except (sqlite3.Error, ValueError) as e:
-                print(f"[!] Database Error: {e}")
+                print(f"[!] Database Error: {e} (Article {idx})")
 
         self.conn.commit()
         print(f"[+] Archival complete. Added {count_new} new intelligence reports.")
