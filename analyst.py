@@ -128,7 +128,9 @@ class IntelAnalyst:
         """
         Extracts Entities and Sentiment from a single article.
         """
-        text = f"{article['title']}. {article['description']}"
+        title = article.get('title') or ''
+        description = article.get('description') or ''
+        text = f"{title}. {description}".strip()
 
         # 1. SENTIMENT ANALYSIS
         sentiment_score = self.sentiment_analyzer.polarity_scores(text)['compound']

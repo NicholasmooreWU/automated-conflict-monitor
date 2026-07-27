@@ -612,31 +612,24 @@ def main():
         st.sidebar.divider()
         
         # === LOAD DATA ===
-        # If a keyword is set, filter articles/entities by keyword in title, description, or region
-        def filter_by_keyword(df, keyword):
-            if df.empty or not keyword:
-                return df
-            keyword_lower = keyword.lower()
-            # Ensure columns are string type before .str operations
-            title_col = df['title'].astype(str).str.lower()
-            desc_col = df['description'].astype(str).str.lower() if 'description' in df.columns else pd.Series([""]*len(df))
-            region_col = df['region'].astype(str).str.lower() if 'region' in df.columns else pd.Series([""]*len(df))
-            mask = (
-                title_col.str.contains(keyword_lower, na=False)
-                | desc_col.str.contains(keyword_lower, na=False)
-                | region_col.str.contains(keyword_lower, na=False)
-            )
-            return df[mask]
+        # NOTE: previously this always called load_data(None) -- i.e. it loaded
+        # every region regardless of what the user picked in the "View Data
+        # From" selectbox above, and the region_filter selectbox's value was
+        # never actually used to filter anything on screen (only in the CSV
+        # export filename). Fixed: pass the user's region selection through.
+        df_articles, df_entities = load_data(region_filter)
 
-        df_articles, df_entities = load_data(None)  # Load all data
-        keyword = st.session_state.get('keyword_search', '').strip()
-        if keyword:
-            df_articles = filter_by_keyword(df_articles, keyword)
-            if not df_articles.empty:
-                article_ids = df_articles['id'].tolist()
-                df_entities = df_entities[df_entities['article_id'].isin(article_ids)]
-            else:
-                df_entities = pd.DataFrame()
+        # NOTE: previously this block read st.session_state['keyword_search'],
+        # which is the SAME text input used for the "Collect Fresh
+        # Intelligence" sidebar action (default value "China"). That meant
+        # every fresh page load silently filtered the *entire* dashboard down
+        # to only articles mentioning "china" -- independent of, and
+        # inconsistent with, the region_filter dropdown above -- with no
+        # visible indication to the user why data was missing. The intent of
+        # that field is to set the *next collection's* search query, not to
+        # filter the already-archived data being displayed, so that filtering
+        # step has been removed. (Tab 3 already has its own dedicated
+        # "Search articles by title" box for filtering the displayed table.)
 
         # --- SHOW FILTERED ARTICLES IF TOGGLED ---
         if show_filtered:
