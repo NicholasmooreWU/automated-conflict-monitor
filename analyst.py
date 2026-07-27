@@ -1,15 +1,3 @@
-# --- RELEVANCE KEYWORDS FOR FILTERING ---
-RELEVANCE_KEYWORDS = {
-    "military", "conflict", "sanctions", "diplomatic",
-    "intelligence", "security", "troops", "naval",
-    "geopolitical", "strategic", "missile", "territorial",
-    "espionage", "alliance", "embargo", "sovereignty"
-}
-
-def is_analytically_relevant(article_text):
-    text_lower = article_text.lower()
-    return any(keyword in text_lower for keyword in RELEVANCE_KEYWORDS)
-
 # --- ENTITY EXTRACTION FILTERS ---
 NOISE_ENTITIES = {"the", "a", "an", "this", "that", "us", "it", "he", "she", "they"}
 MIN_ENTITY_LENGTH = 3
@@ -19,6 +7,8 @@ import os
 import glob
 import spacy
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
+
+import relevance
 
 # Only keep analytically relevant entity types
 RELEVANT_ENTITY_TYPES = {
@@ -31,20 +21,46 @@ RELEVANT_ENTITY_TYPES = {
 }
 
 class IntelAnalyst:
+    # Preferred spaCy model, in order. en_core_web_lg gives noticeably
+    # better NER than en_core_web_sm on multi-word entities (GPE/ORG
+    # especially), which matters here since the network graph is built
+    # entirely from extracted entities. Falls back to en_core_web_sm if
+    # _lg can't be loaded/downloaded (e.g. a memory-constrained deployment
+    # such as Streamlit Community Cloud's free tier), so the app still
+    # runs -- just with weaker entity extraction.
+    SPACY_MODEL_PREFERENCE = ("en_core_web_lg", "en_core_web_sm")
+
     def __init__(self):
         print("[*] Loading Neural Network Models (spaCy & VADER)...")
-        
-        # Download spaCy model if not already installed (for Streamlit Cloud)
-        try:
-            self.nlp = spacy.load("en_core_web_sm")
-        except OSError:
-            print("[*] Downloading spaCy language model...")
-            import subprocess
-            subprocess.run(["python", "-m", "spacy", "download", "en_core_web_sm"], check=True)
-            self.nlp = spacy.load("en_core_web_sm")
-        
+        self.nlp = self._load_spacy_model()
+
         # Load the sentiment analyzer
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
+
+    def _load_spacy_model(self):
+        """
+        Try each model in SPACY_MODEL_PREFERENCE in order, downloading it
+        if not already installed. Falls back to the next model in the list
+        if one fails to load or download.
+        """
+        import subprocess
+        last_error = None
+        for model_name in self.SPACY_MODEL_PREFERENCE:
+            try:
+                return spacy.load(model_name)
+            except OSError:
+                print(f"[*] Downloading spaCy language model: {model_name}...")
+                try:
+                    subprocess.run(
+                        ["python", "-m", "spacy", "download", model_name], check=True
+                    )
+                    return spacy.load(model_name)
+                except Exception as e:
+                    last_error = e
+                    print(f"[!] Could not load {model_name}: {e}")
+        raise RuntimeError(
+            f"Failed to load any spaCy model from {self.SPACY_MODEL_PREFERENCE}: {last_error}"
+        )
 
     def load_latest_intel(self):
         """
@@ -172,25 +188,40 @@ class IntelAnalyst:
             "entities": list(set(filtered_entities)) # Remove duplicates
         }
 
-    def process_batch(self, articles, main_keyword=None):
+    def process_batch(self, articles, main_keyword=None, priority_keywords=None):
+        """
+        priority_keywords: optional list of topic-specific auto-pass terms
+        for the active region/query (see relevance.score_article and
+        dashboard.REGION_PRIORITY_KEYWORDS). Passing None falls back to
+        scoring on main_keyword + the general keyword categories only.
+        """
         processed_data = []
         print(f"[*] Analyzing {len(articles)} articles. This may take a moment...")
         for idx, article in enumerate(articles):
             # Skip articles specifically removed by the source
-            if article['title'] == "[Removed]":
+            if article.get('title') == "[Removed]":
                 print(f"[SKIP] Article {idx}: Title is '[Removed]'.")
                 continue
-            # Content relevance filtering
-            text = f"{article.get('title', '')}. {article.get('description', '')}"
-            # Always include if main keyword is present
-            keyword_ok = False
-            if main_keyword:
-                keyword_ok = main_keyword.lower() in text.lower()
-            if not (keyword_ok or is_analytically_relevant(text)):
-                print(f"[SKIP] Article {idx}: Irrelevant content. Title: {article.get('title', '')}")
+
+            source = article.get('source', '')
+            if isinstance(source, dict):
+                source = source.get('name', '')
+
+            score, reason = relevance.score_article(
+                article.get('title', ''),
+                article.get('description', ''),
+                source=source,
+                priority_keywords=priority_keywords,
+                main_keyword=main_keyword,
+            )
+            if not relevance.is_relevant(reason):
+                print(f"[SKIP] Article {idx}: {reason}. Title: {article.get('title', '')}")
                 article['irrelevant'] = True
                 continue
+
             analysis = self.analyze_article(article)
+            analysis['relevance_score'] = score
+            analysis['filter_reason'] = reason
             processed_data.append(analysis)
         return processed_data
 

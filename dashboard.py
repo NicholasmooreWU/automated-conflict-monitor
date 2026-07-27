@@ -1,4 +1,3 @@
-st = None
 # --- SOURCE CREDIBILITY TIERS ---
 SOURCE_TIERS = {
     # Tier 1 - Primary intelligence value
@@ -28,173 +27,66 @@ import sys
 import traceback
 import uuid
 import re
+import streamlit as st
+import streamlit.components.v1 as components
 from dotenv import load_dotenv
 
+import relevance
 
-# --- NEW CHINA-FOCUSED RELEVANCE FILTERING ---
-CHINA_DIRECT_MENTION = [
-    "china", "chinese", "beijing", "shanghai", "xi jinping", "ccp",
-    "prc", "people's republic", "taiwan", "hong kong", "xinjiang",
-    "tibet", "south china sea", "pla ", "politburo", "xinhua",
-    "huawei", "byd", "tiktok", "bytedance", "alibaba", "tencent",
-    "baidu", "dji", "cctv", "global times", "belt and road",
-    "one china", "reunification"
-]
-GEOPOLITICAL_KWS = [
-    "diplomatic", "sanctions", "military", "conflict", "territorial",
-    "sovereignty", "alliance", "strategic", "intelligence", "coercion",
-    "provocation", "deterrence", "embargo", "blockade"
-]
-ECON_TECH_KWS = [
-    "tariff", "trade", "chips", "semiconductor", "export controls",
-    "supply chain", "rare earth", "currency", "gdp", "investment ban",
-    "technology transfer", "dual-use", "ai race", "ev", "clean energy"
-]
-REGIONAL_ACTORS_KWS = [
-    "iran", "taiwan", "philippines", "japan", "india", "russia",
-    "north korea", "south korea", "asean", "pacific", "indo-pacific",
-    "strait of hormuz", "strait of taiwan", "south china sea"
-]
-DOMESTIC_POLICY_KWS = [
-    "censorship", "surveillance", "protest", "crackdown", "propaganda",
-    "disinformation", "state media", "communist party", "politburo",
-    "social credit", "great firewall", "lying flat", "wolf warrior"
-]
-
-SPORTS_PATTERN = [
-    "review bomb", "review-bomb", "review-bombed", "game update",
-    "game patch", "esports", "nba", "nfl", "fifa", "formula 1",
-    "snooker", "dlc release", "game studio", "video game"
-]
-CONSUMER_PRODUCT_PATTERN = [
-    "motorcycle review", "best headphones", "buying guide",
-    "hands on review", "unboxing", "specs leaked",
-    "hits the roads", "hits the road", "looks kind of like",
-    "looks like a", "new ioniq", "new iphone", "new pixel",
-    "review: ", "first ride", "first drive review",
-    "finally hits", "bling 450", "rc finally"
-]
-LOW_CREDIBILITY_SOURCES = [
-    "kotaku", "rideapart.com", "guessingheadlines.com",
-    "phonearena", "gsmarena", "9to5mac", "9to5google",
-    "droid-life", "xda-developers", "phandroid",
-    "notebookcheck", "liliputing"
-]
-HEALTH_UNRELATED_PATTERN = [
-    "shingles", "vaccine side effects", "diet tips", "workout",
-    "skin care"
-]
+# --- PER-REGION AUTO-PASS KEYWORDS ---
+# Every region gets the same auto-pass privilege that used to belong only
+# to China (see CHINA_DIRECT_MENTION in the old version of this file). A
+# region with no entry here still gets scored by relevance.score_article's
+# general keyword categories, just without a dedicated auto-pass list.
+REGION_PRIORITY_KEYWORDS = {
+    "Middle East": [
+        "israel", "iran", "gaza", "hamas", "hezbollah", "idf", "west bank",
+        "lebanon", "syria", "yemen", "houthi", "saudi arabia", "netanyahu",
+    ],
+    "South China Sea": [
+        "china", "chinese", "beijing", "shanghai", "xi jinping", "ccp",
+        "prc", "people's republic", "taiwan", "hong kong", "xinjiang",
+        "tibet", "south china sea", "pla ", "politburo", "xinhua",
+        "one china", "reunification",
+    ],
+    "Ukraine": [
+        "ukraine", "russia", "russian", "putin", "zelensky", "kyiv",
+        "moscow", "donbas", "crimea", "nato",
+    ],
+    "North Korea": [
+        "north korea", "dprk", "kim jong un", "pyongyang", "missile test",
+        "nuclear test", "denuclearization",
+    ],
+    "Syria": [
+        "syria", "syrian", "assad", "damascus", "idlib", "kurdish forces",
+        "sdf",
+    ],
+    "Yemen": [
+        "yemen", "houthi", "sanaa", "saudi-led coalition", "red sea",
+        "bab el-mandeb",
+    ],
+    "Horn of Africa": [
+        "ethiopia", "somalia", "sudan", "eritrea", "tigray", "al-shabaab",
+        "addis ababa",
+    ],
+    "Sahel Region": [
+        "mali", "niger", "burkina faso", "sahel", "wagner group", "junta",
+        "jihadist",
+    ],
+    "Kashmir": [
+        "kashmir", "india", "pakistan", "line of control", "srinagar",
+        "islamabad", "new delhi",
+    ],
+    "Myanmar": [
+        "myanmar", "burma", "tatmadaw", "min aung hlaing", "rohingya",
+        "naypyidaw",
+    ],
+}
 
 
 def safe_str(val):
     return val if isinstance(val, str) else ""
 
-def china_direct_mention(title, body):
-    title_l = safe_str(title).lower()
-    body_l = safe_str(body).lower()[:300]
-    for kw in CHINA_DIRECT_MENTION:
-        if kw in title_l or kw in body_l:
-            return True
-    return False
-
-
-
-def sports_auto_reject(title, body):
-    title_l = safe_str(title).lower()
-    body_l = safe_str(body).lower()
-    for kw in SPORTS_PATTERN:
-        if kw == "snooker":
-            if "snooker" in title_l:
-                if not any(
-                    cdm in body_l[:100] or cdm in title_l
-                    for cdm in CHINA_DIRECT_MENTION
-                ):
-                    return True
-        else:
-            # Check both title AND beginning of body for sports signals
-            if kw in title_l or kw in body_l[:150]:
-                # Only reject if no China direct mention in TITLE specifically
-                # (body mention alone is not enough to save a sports article)
-                if not any(cdm in title_l for cdm in CHINA_DIRECT_MENTION):
-                    return True
-    return False
-
-
-
-def consumer_auto_reject(title, body=""):
-    title_l = safe_str(title).lower()
-    body_l = safe_str(body).lower()[:200]
-    for kw in CONSUMER_PRODUCT_PATTERN:
-        if kw in title_l or kw in body_l:
-            # Only reject if no China mention in the title itself
-            if not any(cdm in title_l for cdm in CHINA_DIRECT_MENTION):
-                return True
-    return False
-
-def source_auto_reject(source, title, body):
-    """Reject articles from low-credibility sources unless
-    China is explicitly mentioned in the title."""
-    source_l = safe_str(source).lower().strip()
-    title_l = safe_str(title).lower()
-    if source_l in LOW_CREDIBILITY_SOURCES:
-        # Only pass if China is directly mentioned in the TITLE
-        # Body mention alone is not enough for low-credibility sources
-        if not any(cdm in title_l for cdm in CHINA_DIRECT_MENTION):
-            return True
-    return False
-
-
-def health_auto_reject(title, body):
-    title_l = safe_str(title).lower()
-    for kw in HEALTH_UNRELATED_PATTERN:
-        if kw in title_l:
-            # Only reject if no China direct mention
-            if not china_direct_mention(title, body):
-                return True
-    return False
-
-
-def secondary_scoring(title, body):
-    text = f"{safe_str(title)} {safe_str(body)}".lower()
-    score = 0.0
-    # Each category: up to 2 hits counted
-    for kws, weight in [
-        (GEOPOLITICAL_KWS, 0.2),
-        (ECON_TECH_KWS, 0.2),
-        (REGIONAL_ACTORS_KWS, 0.15),
-        (DOMESTIC_POLICY_KWS, 0.1)
-    ]:
-        hits = 0
-        for kw in kws:
-            if kw in text:
-                hits += 1
-            if hits >= 2:
-                break
-        score += min(hits, 2) * weight
-    return min(score, 1.0)
-
-
-
-# Auto-reject patterns must be checked FIRST, before auto-pass.
-
-def relevance_filter_article(title, body, source=""):
-    # Step 1: Auto-reject — always runs before auto-pass
-    if sports_auto_reject(title, body):
-        return 0.0, "auto_reject_sports"
-    if consumer_auto_reject(title, body):
-        return 0.0, "auto_reject_consumer"
-    if health_auto_reject(title, body):
-        return 0.0, "auto_reject_health"
-    if source_auto_reject(source, title, body):
-        return 0.0, "auto_reject_low_credibility_source"
-    # Step 2: China direct mention (auto-pass)
-    if china_direct_mention(title, body):
-        return 1.0, "china_direct_mention"
-    # Step 3: Secondary scoring
-    score = secondary_scoring(title, body)
-    if score >= 0.10:
-        return score, "scored_pass"
-    return score, "failed_secondary_scoring"
 
 def ensure_filtered_articles_table(conn):
     conn.execute("""
@@ -310,7 +202,8 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=None, from
             if not articles:
                 return False, "No articles found"
             collector.save_raw_intel(articles, region_name)
-        # --- RELEVANCE FILTERING (NEW LOGIC) ---
+        # --- RELEVANCE FILTERING ---
+        priority_keywords = REGION_PRIORITY_KEYWORDS.get(region_name)
         filtered_articles = []
         relevant_articles = []
         for art in articles:
@@ -319,10 +212,14 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=None, from
             source = art.get('source', {})
             if isinstance(source, dict):
                 source = source.get('name', '')
-            score, reason = relevance_filter_article(title, body, source)
+            score, reason = relevance.score_article(
+                title, body, source=source,
+                priority_keywords=priority_keywords,
+                main_keyword=search_query,
+            )
             art['relevance_score'] = score
             art['filter_reason'] = reason
-            if reason in ["china_direct_mention", "scored_pass"]:
+            if relevance.is_relevant(reason):
                 relevant_articles.append(art)
             else:
                 filtered_articles.append(art)
@@ -341,7 +238,9 @@ def run_intelligence_pipeline(region_name, search_query, max_articles=None, from
                 raw_data = relevant_articles
             else:
                 raw_data = relevant_articles[:max_articles]
-            structured_intel = analyst.process_batch(raw_data, main_keyword=search_query)
+            structured_intel = analyst.process_batch(
+                raw_data, main_keyword=search_query, priority_keywords=priority_keywords
+            )
             analyst.save_processed_intel(structured_intel)
         with st.spinner(f"💾 Archiving to database..."):
             archivist = IntelArchivist()
@@ -372,10 +271,17 @@ def reprocess_all_articles():
         title = row.get('title', '')
         body = row.get('summary', '') or ''
         source = row.get('source', '')
-        score, reason = relevance_filter_article(title, body, source)
-        if reason in ["china_direct_mention", "scored_pass"]:
+        region = row.get('region', '')
+        priority_keywords = REGION_PRIORITY_KEYWORDS.get(region)
+        main_keyword = REGIONS.get(region)
+        score, reason = relevance.score_article(
+            title, body, source=source,
+            priority_keywords=priority_keywords,
+            main_keyword=main_keyword,
+        )
+        if relevance.is_relevant(reason):
             pass_count += 1
-            if reason == "china_direct_mention":
+            if reason in ("priority_topic_mention", "main_keyword_match"):
                 auto_pass += 1
             else:
                 scored_pass += 1
@@ -585,9 +491,6 @@ def cleanup_old_graphs(max_age_hours=24):
 
 # --- DASHBOARD LAYOUT ---
 def main():
-    global st
-    import streamlit as st
-    import streamlit.components.v1 as components
     # Initialize session state for clean user sessions
     if 'initialized' not in st.session_state:
         st.session_state.initialized = True
@@ -887,68 +790,70 @@ def main():
                 st.download_button(
                     label="Download CSV",
                     data=csv,
-                    file_name=f"intel_report_{selected_region}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv", # type: ignore
+                    file_name=f"intel_report_{(region_filter or 'AllRegions').replace(' ', '')}_{pd.Timestamp.now().strftime('%Y%m%d')}.csv",
                     mime="text/csv"
                 )
-        
+
         # TAB 4: ABOUT
-                with tab4:
-                        st.subheader("About This System")
-                        st.markdown("""
-                        Mission
-                        This automated OSINT (Open Source Intelligence) system monitors global conflicts by:
-                        - Collecting real-time news from multiple sources
-                        - Analyzing text with NLP (Named Entity Recognition & Sentiment Analysis)
-                        - Archiving structured intelligence in a relational database
-                        - Visualizing entity relationships to reveal hidden patterns
-            
-                        Technology Stack
-                        - NLP: spaCy (Entity Recognition), VADER (Sentiment)
-                        - Data: NewsAPI, SQLite, pandas
-                        - Visualization: NetworkX, PyVis, Streamlit
-                        - Security: Environment variables, input sanitization
-            
-                        Entity Types
-                        - GPE: Geopolitical Entities (countries, cities)
-                        - ORG: Organizations (militaries, governments, NGOs)
-                        - PERSON: Key individuals (leaders, officials)
-                        - NORP: Nationalities or religious/political groups
-            
-                        How to Use
-                        For Public Users (Viewing Mode):
-                        1. Browse pre-collected intelligence data from various regions
-                        2. Explore the network graph to see entity relationships
-                        3. Use filters to focus on specific regions or entity types
-                        4. Export data to CSV for further analysis
-            
-                        For Dashboard Administrators:
-                        1. Configure API_KEY in Streamlit Cloud secrets
-                        2. Select a region and click "Collect Fresh Intelligence"
-                        3. New data is automatically collected, analyzed, and archived
-                        4. All users can then view the updated intelligence
-            
-                        Data Collection Access
-                        - API Key Required: Fresh data collection requires a NewsAPI key
-                        - Public Access: All users can view existing data without authentication
-                        - Administrator: Configures API key to enable data collection
-            
-                        Limitations
-                        - Data limited to publicly available news sources
-                        - Sentiment analysis may not capture nuance
-                        - Entity extraction depends on mention frequency
-                        - Update frequency limited by API rate limits
-            
-                        Legal & Attribution
-                        - Data Source: News data provided by [NewsAPI.org](https://newsapi.org)
-                        - Usage: Educational and research purposes
-                        - Disclaimer: This tool aggregates publicly available information for analysis.
-                            News content copyright belongs to original publishers.
-                        - License: This software is licensed under MIT License
-                        - No Warranty: Provided "as-is" without guarantees of accuracy or completeness
-            
-                        Attribution
-                        Built with: spaCy, VADER, NetworkX, Streamlit, NewsAPI, SQLite
-                        """)
+        with tab4:
+            st.subheader("About This System")
+            st.markdown("""
+Mission
+
+This automated OSINT (Open Source Intelligence) system monitors global conflicts by:
+- Collecting real-time news from multiple sources
+- Analyzing text with NLP (Named Entity Recognition & Sentiment Analysis)
+- Archiving structured intelligence in a relational database
+- Visualizing entity relationships to reveal hidden patterns
+
+Technology Stack
+- NLP: spaCy (Entity Recognition), VADER (Sentiment)
+- Data: NewsAPI, SQLite, pandas
+- Visualization: NetworkX, PyVis, Streamlit
+- Security: Environment variables, input sanitization
+
+Entity Types
+- GPE: Geopolitical Entities (countries, cities)
+- ORG: Organizations (militaries, governments, NGOs)
+- PERSON: Key individuals (leaders, officials)
+- NORP: Nationalities or religious/political groups
+
+How to Use
+
+For Public Users (Viewing Mode):
+1. Browse pre-collected intelligence data from various regions
+2. Explore the network graph to see entity relationships
+3. Use filters to focus on specific regions or entity types
+4. Export data to CSV for further analysis
+
+For Dashboard Administrators:
+1. Configure API_KEY in Streamlit Cloud secrets
+2. Select a region and click "Collect Fresh Intelligence"
+3. New data is automatically collected, analyzed, and archived
+4. All users can then view the updated intelligence
+
+Data Collection Access
+- API Key Required: Fresh data collection requires a NewsAPI key
+- Public Access: All users can view existing data without authentication
+- Administrator: Configures API key to enable data collection
+
+Limitations
+- Data limited to publicly available news sources
+- Sentiment analysis may not capture nuance
+- Entity extraction depends on mention frequency
+- Update frequency limited by API rate limits
+
+Legal & Attribution
+- Data Source: News data provided by [NewsAPI.org](https://newsapi.org)
+- Usage: Educational and research purposes
+- Disclaimer: This tool aggregates publicly available information for analysis. News content copyright belongs to original publishers.
+- License: This software is licensed under MIT License
+- No Warranty: Provided "as-is" without guarantees of accuracy or completeness
+
+Attribution
+
+Built with: spaCy, VADER, NetworkX, Streamlit, NewsAPI, SQLite
+            """)
     except Exception as e:
         st.error(f"Application Error: {str(e)}")
         traceback.print_exc()
