@@ -5,6 +5,7 @@ MIN_ENTITY_LENGTH = 3
 import json
 import os
 import glob
+import re
 import spacy
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -20,6 +21,65 @@ RELEVANT_ENTITY_TYPES = {
     "EVENT"   # Named events
 }
 
+# Normalization map for common country/entity variants
+NORMALIZATION_MAP = {
+    # US variants
+    "us": "United States",
+    "u.s.": "United States",
+    "u.s": "United States",
+    "u.s.a.": "United States",
+    "u.s.a": "United States",
+    "usa": "United States",
+    "united states": "United States",
+    "the united states": "United States",
+    # UK variants
+    "uk": "United Kingdom",
+    "u.k.": "United Kingdom",
+    "u.k": "United Kingdom",
+    "united kingdom": "United Kingdom",
+    "the united kingdom": "United Kingdom",
+    # Add more as needed
+}
+
+PLURAL_EXCEPTIONS = {"united nations", "los angeles", "united states", "armed forces"}
+
+# Known cases where spaCy's models (especially en_core_web_lg) misclassify
+# a proper noun's entity TYPE, not just its text. Keyed by lowercased,
+# stripped entity text -> the label it should actually be treated as.
+# Add to this as you spot more mislabeled terms in real data.
+LABEL_CORRECTIONS = {
+    "oscars": "ORG",
+    "grammys": "ORG",
+    "emmys": "ORG",
+}
+
+
+def normalize_entity(text, label):
+    """
+    Normalize an extracted entity's surface text to a canonical form.
+    Pulled out to module level (rather than a closure inside
+    analyze_article) so it can be unit-tested directly without going
+    through live spaCy inference -- which is what let the "Oscars"
+    mislabeling bug hide inside an NER-dependent test in the first place.
+    """
+    norm = text.strip()
+    norm = re.sub(r'^the\s+', '', norm, flags=re.IGNORECASE)
+    norm = re.sub(r'[\.,;:!?"\'\(\)\[\]]', '', norm)
+    norm = norm.strip().lower()
+    # Singularize simple plurals for ORG/GPE (e.g., Oscars -> Oscar)
+    if (
+        label in ("ORG", "GPE")
+        and norm.endswith('s')
+        and len(norm) > 3
+        and ' ' not in norm
+        and norm not in PLURAL_EXCEPTIONS
+    ):
+        norm = norm[:-1]
+    # Map to canonical name if in normalization_map
+    norm = NORMALIZATION_MAP.get(norm, norm.title())
+    return norm
+
+
 class IntelAnalyst:
     # Preferred spaCy model, in order. en_core_web_lg gives noticeably
     # better NER than en_core_web_sm on multi-word entities (GPE/ORG
@@ -33,16 +93,9 @@ class IntelAnalyst:
     def __init__(self):
         print("[*] Loading Neural Network Models (spaCy & VADER)...")
         self.nlp = self._load_spacy_model()
-
-        # Load the sentiment analyzer
         self.sentiment_analyzer = SentimentIntensityAnalyzer()
 
     def _load_spacy_model(self):
-        """
-        Try each model in SPACY_MODEL_PREFERENCE in order, downloading it
-        if not already installed. Falls back to the next model in the list
-        if one fails to load or download.
-        """
         import subprocess
         last_error = None
         for model_name in self.SPACY_MODEL_PREFERENCE:
@@ -63,18 +116,11 @@ class IntelAnalyst:
         )
 
     def load_latest_intel(self):
-        """
-        Finds the most recent raw intelligence file in the intel_data folder.
-        """
-        # Look for all json files in the folder
-        list_of_files = glob.glob('intel_data/*.json') 
+        list_of_files = glob.glob('intel_data/*.json')
         if not list_of_files:
             return None
-        
-        # Get the one with the most recent creation time
         latest_file = max(list_of_files, key=os.path.getctime)
         print(f"[+] Loaded latest intelligence batch: {latest_file}")
-        
         with open(latest_file, 'r') as f:
             return json.load(f)
 
@@ -82,8 +128,6 @@ class IntelAnalyst:
         """
         Extracts Entities and Sentiment from a single article.
         """
-        import re
-        # Combine title and description for better context
         text = f"{article['title']}. {article['description']}"
 
         # 1. SENTIMENT ANALYSIS
@@ -91,80 +135,37 @@ class IntelAnalyst:
 
         # 2. NAMED ENTITY RECOGNITION (NER)
         doc = self.nlp(text)
-        entities = []
 
-        # Normalization map for common country/entity variants
-        normalization_map = {
-            # US variants
-            "us": "United States",
-            "u.s.": "United States",
-            "u.s": "United States",
-            "u.s.a.": "United States",
-            "u.s.a": "United States",
-            "usa": "United States",
-            "united states": "United States",
-            "the united states": "United States",
-            # UK variants
-            "uk": "United Kingdom",
-            "u.k.": "United Kingdom",
-            "u.k": "United Kingdom",
-            "united kingdom": "United Kingdom",
-            "the united kingdom": "United Kingdom",
-            # Add more as needed
-        }
-
-        def normalize_entity(text, label):
-            # Remove leading 'the', punctuation, and lowercase
-            norm = text.strip()
-            norm = re.sub(r'^the\s+', '', norm, flags=re.IGNORECASE)
-            norm = re.sub(r'[\.,;:!?"\'\(\)\[\]]', '', norm)
-            norm = norm.strip().lower()
-            # Singularize simple plurals for ORG/GPE (e.g., Oscars -> Oscar)
-            # Smarter plural-stripping: only singularize single-word entities not in exceptions
-            plural_exceptions = {"United Nations", "Los Angeles", "United States", "Armed Forces"}
-            if (
-                label in ("ORG", "GPE")
-                and norm.endswith('s')
-                and len(norm) > 3
-                and ' ' not in norm
-                and norm not in plural_exceptions
-            ):
-                norm = norm[:-1]
-            # Map to canonical name if in normalization_map
-            norm = normalization_map.get(norm, norm.title())
-            return norm
-
-
-        # Only keep analytically relevant entity types
-        target_labels = RELEVANT_ENTITY_TYPES
-
-        # Collect all PERSON entities for last-name matching
         person_entities = []
         filtered_entities = []
         for ent in doc.ents:
-            # Only keep relevant types
-            if ent.label_ not in target_labels:
+            ent_text = ent.text.strip()
+            # Apply known label corrections BEFORE the type filter, so a
+            # term like "Oscars" is treated as ORG even if this particular
+            # model guessed PERSON.
+            label = LABEL_CORRECTIONS.get(ent_text.lower(), ent.label_)
+
+            if label not in RELEVANT_ENTITY_TYPES:
                 continue
-            # Minimum character length
-            if len(ent.text.strip()) < MIN_ENTITY_LENGTH:
+            if len(ent_text) < MIN_ENTITY_LENGTH:
                 continue
-            # Stopword/noise filter (case-insensitive)
-            if ent.text.strip().lower() in NOISE_ENTITIES:
+            if ent_text.lower() in NOISE_ENTITIES:
                 continue
-            norm_text = normalize_entity(ent.text, ent.label_)
-            if ent.label_ == "PERSON":
+
+            norm_text = normalize_entity(ent_text, label)
+            if label == "PERSON":
                 person_entities.append(norm_text)
-            filtered_entities.append((norm_text, ent.label_))
+            filtered_entities.append((norm_text, label))
 
         # Improved PERSON merging: only merge single-token names to a full name if unambiguous
         if person_entities:
-            # Build a map of last name -> list of full names
             last_name_map = {}
             for full in sorted(person_entities, key=len, reverse=True):
                 tokens = full.split()
                 if len(tokens) > 1:
                     last = tokens[-1]
                     last_name_map.setdefault(last, set()).add(full)
+
             def get_full_name(name):
                 tokens = name.split()
                 if len(tokens) == 1 and name in last_name_map:
@@ -172,6 +173,7 @@ class IntelAnalyst:
                     if len(full_names) == 1:
                         return list(full_names)[0]
                 return name
+
             new_entities = []
             for ent_text, ent_label in filtered_entities:
                 if ent_label == "PERSON":
@@ -179,26 +181,18 @@ class IntelAnalyst:
                 new_entities.append((ent_text, ent_label))
             filtered_entities = new_entities
 
-        # Return the structured data
         return {
             "title": article['title'],
             "source": article['source']['name'],
             "published_at": article['publishedAt'],
             "sentiment": sentiment_score,
-            "entities": list(set(filtered_entities)) # Remove duplicates
+            "entities": list(set(filtered_entities))
         }
 
     def process_batch(self, articles, main_keyword=None, priority_keywords=None):
-        """
-        priority_keywords: optional list of topic-specific auto-pass terms
-        for the active region/query (see relevance.score_article and
-        dashboard.REGION_PRIORITY_KEYWORDS). Passing None falls back to
-        scoring on main_keyword + the general keyword categories only.
-        """
         processed_data = []
         print(f"[*] Analyzing {len(articles)} articles. This may take a moment...")
         for idx, article in enumerate(articles):
-            # Skip articles specifically removed by the source
             if article.get('title') == "[Removed]":
                 print(f"[SKIP] Article {idx}: Title is '[Removed]'.")
                 continue
@@ -231,21 +225,13 @@ class IntelAnalyst:
             json.dump(data, f, indent=4)
         print(f"[+] Analysis complete. Processed intelligence saved to {filename}")
 
+
 if __name__ == "__main__":
-    # 1. Initialize Analyst
     analyst = IntelAnalyst()
-    
-    # 2. Load Raw Data
     raw_data = analyst.load_latest_intel()
-    
     if raw_data:
-        # 3. Process the Data
         structured_intel = analyst.process_batch(raw_data)
-        
-        # 4. Save Results
         analyst.save_processed_intel(structured_intel)
-        
-        # 5. Show a sample
         if structured_intel:
             print("\n--- ANALYST REPORT SAMPLE ---")
             sample = structured_intel[0]
